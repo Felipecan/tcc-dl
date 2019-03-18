@@ -7,8 +7,8 @@ def split_audio(time):
 
     audio = AudioSegment.from_wav('qv002.wav')
     audios_list = [audio[start:start+1000] for start in range(0, len(audio), 1000)]
-    print(len(audios_list))
-    print(len(audios_list[12]))
+    # print(len(audios_list))
+    # print(len(audios_list[12]))
     frequencies, times, spectrogram = signal.spectrogram(np.array(audio.get_array_of_samples()), audio.frame_rate)
     
     plt.pcolormesh(times, frequencies, np.log(spectrogram))    
@@ -30,5 +30,3 @@ def wav2spectrogram(path_to_file):
     plt.box(False)    
     plt.savefig('./teste.png', bbox_inches='tight', pad_inches=0)
 
-
-split_audio(0)
