@@ -1,0 +1,9 @@
+#python trashs and others
+__pycache__
+*.csv
+
+.vscode/
+dados/
+
+codes/*.wav
+codes/*.png

@@ -1,12 +1,12 @@
-name: tcc-dl
+name: tcc-dl-env
 channels:
-  - conda-forge
   - defaults
+  - conda-forge
 dependencies:
   - python=3.5
   - numpy
   - pandas
   - matplotlib
-  - tensorflow-gpu
+  - tensorflow
   - scipy
   - pydub
