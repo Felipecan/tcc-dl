@@ -10,3 +10,4 @@ dependencies:
   - tensorflow
   - scipy
   - pydub
+  - futures

@@ -20,21 +20,24 @@ def split_audio(path_to_audio, step):
             step:
                 Paço a que o áudio será divido, dado em milisegundos. Por exemplo 1000 equivale a 1000 ms, que é 1 s.
     '''   
+    
     audio = AudioSegment.from_wav(path_to_audio)
 
     audios_list = [audio[start:start+step] for start in range(0, len(audio), step)]
+    return audios_list
     
-    frequencies, times, spectrogram = signal.spectrogram(np.array(audio.get_array_of_samples()), audio.frame_rate)
-    # frequencies, times, spectrogram = signal.spectrogram(np.array(audios_list[12].get_array_of_samples()), audio.frame_rate)
-    
-    plt.pcolormesh(times, frequencies, np.log(spectrogram))    
-    plt.ylabel('Frequency [Hz]')
-    plt.xlabel('Time [sec]')
-
-    plt.show()
-
-
 def wav2spectrogram(path_to_file):
+    '''
+        Descrição:
+            O funçao wav2spectrogram() gera um espectrograma a partir de um áudio e salva sua imagem.
+
+        Utilização:
+            wav2spectrogram(/path/to/audio.wav).
+
+        Parâmetros:                
+            path_to_file:
+                Caminho até o arquivo de áudio desejado.
+    ''' 
     
     audio = AudioSegment.from_wav(path_to_file)
 
@@ -53,7 +56,7 @@ def pre_processing(path_to_csv, path_to_audios_folders):
     try:
         csv_file = pd.read_csv(os.path.join(dirname, path_to_csv), sep=',', encoding='utf-8', low_memory=False)
     except IOError as e:
-        print('Não foi possivel ler o arquivo[] corretamente. Encerrando programa...')
+        print('Não foi possivel ler o arquivo[{}] corretamente. Encerrando programa...'.format(path_to_csv))
         print(e)
         return 0  
         
@@ -63,22 +66,38 @@ def pre_processing(path_to_csv, path_to_audios_folders):
     # healthy_df = csv_file[(csv_file['Diagnóstico (descritivo)'] == 'LARINGE NORMAL') | 
     #                    (csv_file['Diagnóstico (descritivo)'] == 'laringe normal')]      
     healthy_df = csv_file[csv_file['Diagnóstico (descritivo)'].str.contains('LARINGE NORMAL', case=False)]       
+    nodule_df = csv_file[csv_file['Diagnóstico (descritivo)'].str.contains('NODULO', case=False)]   
     polypo_df = csv_file[csv_file['Diagnóstico (descritivo)'].str.contains('POLIPO', case=False)]                    
-    edema_df = csv_file[csv_file['Diagnóstico (descritivo)'].str.contains('EDEMA', case=False)]                   
-    nodule_df = csv_file[csv_file['Diagnóstico (descritivo)'].str.contains('NODULO', case=False)]                   
-    
+    edema_df = csv_file[csv_file['Diagnóstico (descritivo)'].str.contains('EDEMA', case=False)]                                       
+
     path_spect_cat = os.path.join(dirname, '../dados/spect')    
     path_to_audios_folders = os.path.join(dirname, path_to_audios_folders)    
-    # pac_folders = os.listdir(dirname+'/../dados/pac-audios')
-
-    for row in polypo_df.itertuples():
-        # print(int(row[1]))
-        if(row[1] < 100):
-            pac_folder = os.listdir(path_to_audios_folders + '/pac0'+str(int(row[1])))            
     
+    with ThreadPoolExecutor(max_workers=10) as executor:       
+          
+        jobs = []
+
+        for row in polypo_df.itertuples():
+
+            if(row[1] < 100):                
+                audio_path = os.path.join(path_to_audios_folders, 'pac0' + str(int(row[1])), 'qv002.wav')
+                print(audio_path)
+            else:                
+                audio_path = os.path.join(path_to_audios_folders, 'pac' + str(int(row[1])), 'qv002.wav')
+                print(audio_path)
+
+            job = executor.submit(split_audio, audio_path, 1000)
+            jobs.append(job)
+    
+    audios_list_ln = []
+    for result in jobs:
+        audios_list_ln.append(result.result(timeout=None))# print(result.result(timeout=None))
+    
+    print(len(audios_list_ln))
+
     
 pre_processing('../dados/db-spect.csv', '../dados/pac-audios')
-# split_audio(1000)
+split_audio('./qv002.wav', 1000)
 
 
 '''
