@@ -4,10 +4,23 @@ from pydub import AudioSegment
 import numpy as np
 import pandas as pd
 import os
+from concurrent.futures import ThreadPoolExecutor, wait 
 
-def split_audio(step):
+def split_audio(path_to_audio, step):
+    '''
+        Descrição:
+            O funçao split_audio() separada um determinado áudio em várias partes.
 
-    audio = AudioSegment.from_wav('qv002.wav')
+        Utilização:
+            split_audio(/path/to/audio.wav, 1000).
+
+        Parâmetros:                
+            path_to_audio:
+                Caminho até o arquivo de áudio desejado.
+            step:
+                Paço a que o áudio será divido, dado em milisegundos. Por exemplo 1000 equivale a 1000 ms, que é 1 s.
+    '''   
+    audio = AudioSegment.from_wav(path_to_audio)
 
     audios_list = [audio[start:start+step] for start in range(0, len(audio), step)]
     
@@ -33,39 +46,40 @@ def wav2spectrogram(path_to_file):
     plt.box(False)    
     plt.savefig('./teste.png', bbox_inches='tight', pad_inches=0)
 
-def pre_processing(path_to_csv=None, path_to_audios=None):
+def pre_processing(path_to_csv, path_to_audios_folders):
+    
+    dirname, _ = os.path.split(os.path.abspath(__file__))   
 
     try:
-        csv_file = pd.read_csv('../dados/db-spect.csv', sep=',', encoding='utf-8', low_memory=False)
+        csv_file = pd.read_csv(os.path.join(dirname, path_to_csv), sep=',', encoding='utf-8', low_memory=False)
     except IOError as e:
         print('Não foi possivel ler o arquivo[] corretamente. Encerrando programa...')
         print(e)
         return 0  
+        
+    csv_file.dropna(subset=['Diagnóstico (descritivo)'], inplace=True)
+    csv_file.drop(csv_file.columns.difference(['NÚMERO PACT','Diagnóstico (descritivo)']), axis=1, inplace=True)
     
-
-    csv_file = csv_file.dropna(subset=['Diagnóstico (descritivo)'])
-
     # healthy_df = csv_file[(csv_file['Diagnóstico (descritivo)'] == 'LARINGE NORMAL') | 
     #                    (csv_file['Diagnóstico (descritivo)'] == 'laringe normal')]      
     healthy_df = csv_file[csv_file['Diagnóstico (descritivo)'].str.contains('LARINGE NORMAL', case=False)]       
-    print('healthy: ' + str(len(healthy_df.index))) 
+    polypo_df = csv_file[csv_file['Diagnóstico (descritivo)'].str.contains('POLIPO', case=False)]                    
+    edema_df = csv_file[csv_file['Diagnóstico (descritivo)'].str.contains('EDEMA', case=False)]                   
+    nodule_df = csv_file[csv_file['Diagnóstico (descritivo)'].str.contains('NODULO', case=False)]                   
+    
+    path_spect_cat = os.path.join(dirname, '../dados/spect')    
+    path_to_audios_folders = os.path.join(dirname, path_to_audios_folders)    
+    # pac_folders = os.listdir(dirname+'/../dados/pac-audios')
 
-    polypo_df = csv_file[csv_file['Diagnóstico (descritivo)'].str.contains('POLIPO', case=False)]            
-    print('polypo: ' + str(len(polypo_df.index)))   
-
-    edema_df = csv_file[csv_file['Diagnóstico (descritivo)'].str.contains('EDEMA', case=False)]               
-    print('edema: ' + str(len(edema_df.index)))   
-
-    nodule_df = csv_file[csv_file['Diagnóstico (descritivo)'].str.contains('NODULO', case=False)]               
-    print('nodule: ' + str(len(nodule_df.index)))   
+    for row in polypo_df.itertuples():
+        # print(int(row[1]))
+        if(row[1] < 100):
+            pac_folder = os.listdir(path_to_audios_folders + '/pac0'+str(int(row[1])))            
     
     
-# pre_processing()
+pre_processing('../dados/db-spect.csv', '../dados/pac-audios')
 # split_audio(1000)
 
-dirname, filename = os.path.split(os.path.abspath(__file__))
-temp = os.listdir(dirname+'/../dados/pac-audios')
-print(temp)
 
 '''
     1 - Ler o csv (done)
