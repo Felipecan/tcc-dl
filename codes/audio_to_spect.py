@@ -3,6 +3,7 @@ from scipy import signal
 from pydub import AudioSegment
 import numpy as np
 import pandas as pd
+import os
 
 def split_audio(step):
 
@@ -44,22 +45,31 @@ def pre_processing(path_to_csv=None, path_to_audios=None):
 
     csv_file = csv_file.dropna(subset=['Diagnóstico (descritivo)'])
 
-    healthy_df = csv_file[(csv_file['Diagnóstico (descritivo)'] == 'LARINGE NORMAL') | 
-                       (csv_file['Diagnóstico (descritivo)'] == 'laringe normal')]
-    print('healthy: ' + str(len(healthy_df.index)))    
+    # healthy_df = csv_file[(csv_file['Diagnóstico (descritivo)'] == 'LARINGE NORMAL') | 
+    #                    (csv_file['Diagnóstico (descritivo)'] == 'laringe normal')]      
+    healthy_df = csv_file[csv_file['Diagnóstico (descritivo)'].str.contains('LARINGE NORMAL', case=False)]       
+    print('healthy: ' + str(len(healthy_df.index))) 
 
-    polypos_df = csv_file[csv_file['Diagnóstico (descritivo)'].str.contains('POLIPO')]        
-    print('polypos: ' + str(len(polypos_df.index)))
-    print(polypos_df)
+    polypo_df = csv_file[csv_file['Diagnóstico (descritivo)'].str.contains('POLIPO', case=False)]            
+    print('polypo: ' + str(len(polypo_df.index)))   
+
+    edema_df = csv_file[csv_file['Diagnóstico (descritivo)'].str.contains('EDEMA', case=False)]               
+    print('edema: ' + str(len(edema_df.index)))   
+
+    nodule_df = csv_file[csv_file['Diagnóstico (descritivo)'].str.contains('NODULO', case=False)]               
+    print('nodule: ' + str(len(nodule_df.index)))   
     
     
-pre_processing()
+# pre_processing()
 # split_audio(1000)
 
+dirname, filename = os.path.split(os.path.abspath(__file__))
+temp = os.listdir(dirname+'/../dados/pac-audios')
+print(temp)
 
 '''
-    1 - Ler o csv
-    2 - Tratá-lo para separar todas as categorias e sub-categorias
+    1 - Ler o csv (done)
+    2 - Tratá-lo para separar todas as categorias e sub-categorias (done)
     3 - A partir de um doença casada com o eavg (qualquer que seja), separar os áudios por pastas: doença -> eavg -> arquivos
     4 - Feito a divisão ou durante a divisão, separar o áudio e converter para o espectograma.
 '''
