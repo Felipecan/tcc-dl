@@ -137,7 +137,6 @@ def pre_processing(path_to_csv, path_to_audios_folders):
     print('end...')
      
 pre_processing('../dados/db-spect.csv', '../dados/pac-audios')
-audio = AudioSegment.from_wav('qv002.wav')
 
 # future...
 '''
