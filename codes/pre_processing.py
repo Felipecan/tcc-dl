@@ -49,13 +49,14 @@ def wav2spectrogram(audio_file, path_to_save):
     frequencies, times, spectrogram = signal.spectrogram(np.array(audio_file.get_array_of_samples()), audio_file.frame_rate)
     # 20.*np.log10(np.abs(spectrogram)/10e-6) decibel
     # 10.*np.log10(spectrogram)   
+    # plt.figure(figsize=(2.56, 2.56)) # olhar o dpi do monitor!! 
     plt.pcolormesh(times, frequencies, np.log(spectrogram))
     plt.tick_params(top=False, bottom=False, left=False, right=False, labelleft=False, labelbottom=False)
-    plt.box(False)    
+    plt.box(False)        
     plt.savefig(path_to_save, bbox_inches='tight', pad_inches=0)
 
 def pre_processing(path_to_csv, path_to_audios_folders):
-     '''
+    '''
         Descrição:
             Faz o pré-processamento dos dados contidos no csv para os áudios e em seguida o espetrograma.
 
@@ -68,7 +69,7 @@ def pre_processing(path_to_csv, path_to_audios_folders):
             path_to_audios_folders:
                 Caminho até as pastas que contem os áudios. Atenção que os áudios devem tá separados por pasta, nesse caso.
     ''' 
-    
+
     dirname, _ = os.path.split(os.path.abspath(__file__))   
 
     try:
@@ -136,7 +137,7 @@ def pre_processing(path_to_csv, path_to_audios_folders):
     print('end...')
      
 pre_processing('../dados/db-spect.csv', '../dados/pac-audios')
-
+audio = AudioSegment.from_wav('qv002.wav')
 
 # future...
 '''
