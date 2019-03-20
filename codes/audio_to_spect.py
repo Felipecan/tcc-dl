@@ -26,7 +26,7 @@ def split_audio(path_to_audio, step):
     audios_list = [audio[start:start+step] for start in range(0, len(audio), step)]
     return audios_list
     
-def wav2spectrogram(path_to_file):
+def wav2spectrogram(audio_file, path_to_save):
     '''
         Descrição:
             O funçao wav2spectrogram() gera um espectrograma a partir de um áudio e salva sua imagem.
@@ -38,16 +38,16 @@ def wav2spectrogram(path_to_file):
             path_to_file:
                 Caminho até o arquivo de áudio desejado.
     ''' 
-    
-    audio = AudioSegment.from_wav(path_to_file)
+        
+    # audio = AudioSegment.from_wav(audio_file)
 
-    frequencies, times, spectrogram = signal.spectrogram(np.array(audio.get_array_of_samples()), audio.frame_rate)
+    frequencies, times, spectrogram = signal.spectrogram(np.array(audio_file.get_array_of_samples()), audio_file.frame_rate)
     # 20.*np.log10(np.abs(spectrogram)/10e-6) decibel
-    # 10.*np.log10(spectrogram)
+    # 10.*np.log10(spectrogram)   
     plt.pcolormesh(times, frequencies, np.log(spectrogram))
     plt.tick_params(top=False, bottom=False, left=False, right=False, labelleft=False, labelbottom=False)
     plt.box(False)    
-    plt.savefig('./teste.png', bbox_inches='tight', pad_inches=0)
+    plt.savefig(path_to_save, bbox_inches='tight', pad_inches=0)
 
 def pre_processing(path_to_csv, path_to_audios_folders):
     
@@ -57,54 +57,82 @@ def pre_processing(path_to_csv, path_to_audios_folders):
         csv_file = pd.read_csv(os.path.join(dirname, path_to_csv), sep=',', encoding='utf-8', low_memory=False)
     except IOError as e:
         print('Não foi possivel ler o arquivo[{}] corretamente. Encerrando programa...'.format(path_to_csv))
-        print(e)
-        return 0  
+        raise SystemExit(e)        
         
     csv_file.dropna(subset=['Diagnóstico (descritivo)'], inplace=True)
     csv_file.drop(csv_file.columns.difference(['NÚMERO PACT','Diagnóstico (descritivo)']), axis=1, inplace=True)
+       
+    pathologies_df = {
+        'laringe normal': [],
+        'nodulo': [],
+        'polipo': [],
+        'edema': []
+    }
+    for k, v in pathologies_df.items():
+        pathologies_df[k] = csv_file[csv_file['Diagnóstico (descritivo)'].str.contains(k, case=False)]                                  
     
-    # healthy_df = csv_file[(csv_file['Diagnóstico (descritivo)'] == 'LARINGE NORMAL') | 
-    #                    (csv_file['Diagnóstico (descritivo)'] == 'laringe normal')]      
-    healthy_df = csv_file[csv_file['Diagnóstico (descritivo)'].str.contains('LARINGE NORMAL', case=False)]       
-    nodule_df = csv_file[csv_file['Diagnóstico (descritivo)'].str.contains('NODULO', case=False)]   
-    polypo_df = csv_file[csv_file['Diagnóstico (descritivo)'].str.contains('POLIPO', case=False)]                    
-    edema_df = csv_file[csv_file['Diagnóstico (descritivo)'].str.contains('EDEMA', case=False)]                                       
-
-    path_spect_cat = os.path.join(dirname, '../dados/spect')    
     path_to_audios_folders = os.path.join(dirname, path_to_audios_folders)    
-    
-    with ThreadPoolExecutor(max_workers=10) as executor:       
-          
-        jobs = []
+    path_spect_cat = os.path.join(dirname, '../dados/spect')    
+    for k in pathologies_df.keys():
+        os.makedirs(os.path.join(path_spect_cat, k), exist_ok=True)
 
-        for row in polypo_df.itertuples():
+    pathologies_audios_list = {}     
+    min_len = min([len(value.index) for value in pathologies_df.values()])            
+    for k, v in pathologies_df.items():
 
-            if(row[1] < 100):                
-                audio_path = os.path.join(path_to_audios_folders, 'pac0' + str(int(row[1])), 'qv002.wav')
-                print(audio_path)
-            else:                
-                audio_path = os.path.join(path_to_audios_folders, 'pac' + str(int(row[1])), 'qv002.wav')
-                print(audio_path)
+        with ThreadPoolExecutor(max_workers=10) as executor:       
+            
+            jobs = []
+            index = 0
 
-            job = executor.submit(split_audio, audio_path, 1000)
-            jobs.append(job)
-    
-    audios_list_ln = []
-    for result in jobs:
-        audios_list_ln.append(result.result(timeout=None))# print(result.result(timeout=None))
-    
-    print(len(audios_list_ln))
+            for row in pathologies_df[k].itertuples():
 
+                if index == min_len:
+                    break            
+                index += 1
+
+                if(row[1] < 10):                
+                    audio_path = os.path.join(path_to_audios_folders, 'pac00' + str(int(row[1])), 'qv002.wav')
+                elif(row[1] < 100):                
+                    audio_path = os.path.join(path_to_audios_folders, 'pac0' + str(int(row[1])), 'qv002.wav')
+                else:
+                    audio_path = os.path.join(path_to_audios_folders, 'pac' + str(int(row[1])), 'qv002.wav')                  
+
+                job = executor.submit(split_audio, audio_path, 1000)
+                jobs.append(job)
     
+        splitted_audios = []               
+        for result in jobs:
+            splitted_audios.append(result.result(timeout=None))        
+        pathologies_audios_list.update({k: sum(splitted_audios, [])})
+
+
+    # min_len = min([len(value) for value in pathologies_audios_list.values()])
+    # jobss = []
+    # for key, value in pathologies_audios_list.items():
+    #     with ThreadPoolExecutor(max_workers=10) as executor:                               
+    #         for i in range(min_len):
+    #             job = executor.submit(wav2spectrogram, value[i], os.path.join(path_spect_cat, key, str(i) + '.png'))
+    #             jobss.append(job)
+    
+    # wait(jobss, timeout=None)
+    min_len = min([len(value) for value in pathologies_audios_list.values()])
+    for key, value in pathologies_audios_list.items():
+        for i in range(min_len):
+            wav2spectrogram(value[i], os.path.join(path_spect_cat, key, str(i) + '.png'))
+    
+    print("Espectrogramas salvos em: " + path_spect_cat)
+    print('end...')
+     
 pre_processing('../dados/db-spect.csv', '../dados/pac-audios')
-split_audio('./qv002.wav', 1000)
+
 
 
 '''
     1 - Ler o csv (done)
     2 - Tratá-lo para separar todas as categorias e sub-categorias (done)
-    3 - A partir de um doença casada com o eavg (qualquer que seja), separar os áudios por pastas: doença -> eavg -> arquivos
-    4 - Feito a divisão ou durante a divisão, separar o áudio e converter para o espectograma.
+    3 - A partir de um doença casada com o eavg (qualquer que seja), separar os áudios por pastas: doença -> eavg -> arquivos (mais ou menos feito, pois só está a patologia)
+    4 - Feito a divisão ou durante a divisão, separar o áudio e converter para o espectograma. (done)
 '''
 
 
