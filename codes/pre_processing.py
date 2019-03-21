@@ -1,11 +1,12 @@
-import matplotlib.pyplot as plt
-from scipy import signal
-from pydub import AudioSegment
+import os
+import argparse
 import numpy as np
 import pandas as pd
-import os
-from concurrent.futures import ThreadPoolExecutor, wait 
 import multiprocessing
+from scipy import signal
+from pydub import AudioSegment
+import matplotlib.pyplot as plt
+from concurrent.futures import ThreadPoolExecutor, wait 
 
 
 def split_audio(path_to_audio, step):
@@ -47,10 +48,7 @@ def wav2spectrogram(audio_file, path_to_save):
     ''' 
     
     frequencies, times, spectrogram = signal.spectrogram(np.array(audio_file.get_array_of_samples()), audio_file.frame_rate)
-    # 20.*np.log10(np.abs(spectrogram)/10e-6) decibel
-    # 10.*np.log10(spectrogram)   
-    # plt.figure(figsize=(2.56, 2.56)) # olhar o dpi do monitor!! 
-    plt.pcolormesh(times, frequencies, np.log(spectrogram))
+    plt.pcolormesh(times, frequencies, np.log(spectrogram)) # 20.*np.log10(np.abs(spectrogram)/10e-6) decibel
     plt.tick_params(top=False, bottom=False, left=False, right=False, labelleft=False, labelbottom=False)
     plt.box(False)        
     plt.savefig(path_to_save, bbox_inches='tight', pad_inches=0)
@@ -135,32 +133,11 @@ def pre_processing(path_to_csv, path_to_audios_folders):
     
     print("Espectrogramas salvos em: " + path_spect_cat)
     print('end...')
-     
-pre_processing('../dados/db-spect.csv', '../dados/pac-audios')
 
-# future...
-'''
-def pre_processing(path_to_csv=None, path_to_audios=None):
 
-    try:
-        csv_file = pd.read_csv('../dados/db-spect.csv', sep=',', encoding='utf-8', low_memory=False)
-    except IOError as e:
-        print('Não foi possivel ler o arquivo[] corretamente. Encerrando programa...')
-        print(e)
-        return 0  
-    
-    healthy = csv_file[(csv_file['Diagnóstico (descritivo)'] == 'LARINGE NORMAL') | 
-                       (csv_file['Diagnóstico (descritivo)'] == 'laringe normal')]
-    print('healthy: ' + str(len(healthy.index)))
-    
-    healthy_and_eavg_1 = healthy[healthy['Pres, Desvio EAV-G (VGe)'] == 1]
-    print('healthy+eav1: ' + str(len(healthy_and_eavg_1.index)))
+parser = argparse.ArgumentParser(description='Script pré-processar os áudios. Ele lê o csv, separa os áudios e os converte para espectrogramas.')
+parser.add_argument('--csv', action='store', dest='csv', default='../dados/db-spect.csv', required=True, help='Nome/caminho do .csv com os dados para categorizar.')
+parser.add_argument('--audio_folders', action='store', dest='audio_folders', default='../dados/pac-audios', required=True, help='Nome/caminho do a pasta contendo as pastas com os áudios.')
+arguments = parser.parse_args()
 
-    healthy_and_eavg_2 = healthy[healthy['Pres, Desvio EAV-G (VGe)'] == 2]
-    print('healthy+eav2: ' + str(len(healthy_and_eavg_2.index)))
-   
-    # EAV-Grau geral (VGe) classif
-    for i in range(1, 5):
-        healthy_and_eavg = healthy[healthy['EAV-Grau geral (VGe) classif'] == i]
-        print('eav ' + str(i) + ': ' + str(len(healthy_and_eavg.index)))
-'''
+pre_processing(arguments.csv, arguments.audio_folders)

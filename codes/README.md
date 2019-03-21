@@ -17,4 +17,11 @@ Após criado o ambiente, para ativá-lo use o comando no terminal do Linux:
 $ conda activate tcc-dl-env
 ```
 
+[pre_processing.py](pre_processing.py): Esse arquivo faz o pre processamento dos dados que serão usados na rede. Ele separa os dados do csv para cada áudio e obtem os espectrogramas dos mesmo. 
+
+Para executar os scripts:
+```sh
+$ python pre_processing.py --csv caminho/para/arquivo.csv --audio_folders caminho/para/pastas_audios
+```
+
 Obs 1: O nome do ambiente pode ser mudado no arquivo [dl-env.yml](dl-env.yml), primeira linha.
