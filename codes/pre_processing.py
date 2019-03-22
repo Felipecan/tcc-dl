@@ -15,7 +15,7 @@ def split_audio(path_to_audio, step):
             O funçao split_audio() separada um determinado áudio em várias partes.
 
         Utilização:
-            split_audio("/path/to/audio.wav", 1000).
+            split_audio("/path/to/pac_audio_folder", 1000).
 
         Parâmetros:                
             path_to_audio:
@@ -27,6 +27,14 @@ def split_audio(path_to_audio, step):
             Um lista de áudios que contem em cada posição, uma lista de áudios divididos. 
             Ex: audio[0] pode conter uma lista com 10 áudios da mesma fonte.
     '''   
+    
+    files = os.listdir(path_to_audio)
+    if('qv001.wav' in files):
+        path_to_audio = os.path.join(path_to_audio, 'qv001.wav')
+    elif('qv012.wav' in files):
+        path_to_audio = os.path.join(path_to_audio, 'qv012.wav')
+    else:
+        return []
     
     audio = AudioSegment.from_wav(path_to_audio)
     audios_list = [audio[start:start+step] for start in range(0, len(audio), step)]
@@ -76,28 +84,28 @@ def pre_processing(path_to_csv, path_to_audios_folders):
         print('Não foi possivel ler o arquivo[{}] corretamente. Encerrando programa...'.format(path_to_csv))
         raise SystemExit(e)        
         
-    csv_file.dropna(subset=['Diagnóstico (descritivo)'], inplace=True)
-    csv_file.drop(csv_file.columns.difference(['NÚMERO PACT','Diagnóstico (descritivo)']), axis=1, inplace=True)
+    csv_file.dropna(subset=['Pres, Desvio EAV-G (VGe)'], inplace=True)
+    csv_file.drop(csv_file.columns.difference(['NÚMERO PACT', 'Pres, Desvio EAV-G (VGe)']), axis=1, inplace=True)
        
-    pathologies_df = {
-        'laringe normal': [],
-        'nodulo': [],
-        'polipo': [],
-        'edema': []
+    deviation_df = {
+        '1': [],
+        '2': []
     }
-    for k, v in pathologies_df.items():
-        pathologies_df[k] = csv_file[csv_file['Diagnóstico (descritivo)'].str.contains(k, case=False)]                                  
-    
+    for k, v in deviation_df.items():
+        deviation_df[k] = csv_file[csv_file['Pres, Desvio EAV-G (VGe)'] == int(k)]   
+
+
     path_to_audios_folders = os.path.join(dirname, path_to_audios_folders)    
     path_spect_cat = os.path.join(dirname, '../dados/spect')    
-    for k in pathologies_df.keys():
-        os.makedirs(os.path.join(path_spect_cat, k), exist_ok=True)
+    for k in deviation_df.keys():
+        os.makedirs(os.path.join(path_spect_cat, 'desvio_'+k), exist_ok=True)
+
 
     # getting all splited audios from data csv
-    pathologies_audios_list = {}     
-    min_len = min([len(value.index) for value in pathologies_df.values()])                    
-    pool = multiprocessing.Pool(10)
-    for key, value in pathologies_df.items():
+    deviation_audios_list = {}     
+    min_len = min([len(value.index) for value in deviation_df.values()])                    
+    pool = multiprocessing.Pool(20)
+    for key, value in deviation_df.items():
     
         index = 0
         results = []
@@ -108,28 +116,30 @@ def pre_processing(path_to_csv, path_to_audios_folders):
             index += 1
 
             if(row[1] < 10):                
-                audio_path = os.path.join(path_to_audios_folders, 'pac00' + str(int(row[1])), 'qv002.wav')
+                audio_path = os.path.join(path_to_audios_folders, 'pac00' + str(int(row[1])))
             elif(row[1] < 100):                
-                audio_path = os.path.join(path_to_audios_folders, 'pac0' + str(int(row[1])), 'qv002.wav')
+                audio_path = os.path.join(path_to_audios_folders, 'pac0' + str(int(row[1])))
             else:
-                audio_path = os.path.join(path_to_audios_folders, 'pac' + str(int(row[1])), 'qv002.wav')                  
+                audio_path = os.path.join(path_to_audios_folders, 'pac' + str(int(row[1])))                  
             
             results.append(pool.apply_async(split_audio, args=(audio_path, 1000)))
 
         splitted_audios = [results[i].get(timeout=None) for i in range(len(results))]
-        pathologies_audios_list.update({key: sum(splitted_audios, [])})
+        deviation_audios_list.update({key: sum(splitted_audios, [])})
 
     pool.close()
     pool.join()
+
 
     # saving all spectrograms from audios above
-    min_len = min([len(value) for value in pathologies_audios_list.values()])
-    pool = multiprocessing.Pool(40)
-    for key, value in pathologies_audios_list.items():        
+    min_len = min([len(value) for value in deviation_audios_list.values()])    
+    pool = multiprocessing.Pool(50)
+    for key, value in deviation_audios_list.items():        
         for i in range(min_len):            
-            pool.apply_async(wav2spectrogram, args=(value[i], os.path.join(path_spect_cat, key, str(i) + '.png')))
+            pool.apply_async(wav2spectrogram, args=(value[i], os.path.join(path_spect_cat, 'desvio_' + key, str(i) + '.png')))
     pool.close()
     pool.join()
+
     
     print("Espectrogramas salvos em: " + path_spect_cat)
     print('end...')
