@@ -19,13 +19,13 @@ def split_audio(path_to_audio, step):
 
         Parâmetros:                
             path_to_audio:
-                Caminho até o arquivo de áudio desejado.
+                Caminho até a pasta contendo o arquivo de áudio desejado.
             step:
                 Paço a que o áudio será divido, dado em milisegundos. Por exemplo 1000 equivale a 1000 ms, que é 1 s.
 
         Retorno:
-            Um lista de áudios que contem em cada posição, uma lista de áudios divididos. 
-            Ex: audio[0] pode conter uma lista com 10 áudios da mesma fonte.
+            Um lista de áudios que contem em cada posição, uma parte do áudio original. 
+            Caso o áudio não seje encontrado, retorna uma lista vazia.            
     '''   
     
     files = os.listdir(path_to_audio)
@@ -56,9 +56,11 @@ def wav2spectrogram(audio_file, path_to_save):
     ''' 
     
     frequencies, times, spectrogram = signal.spectrogram(np.array(audio_file.get_array_of_samples()), audio_file.frame_rate)
-    plt.pcolormesh(times, frequencies, np.log(spectrogram)) # 20.*np.log10(np.abs(spectrogram)/10e-6) decibel
+    plt.figure(figsize=(2.24,2.24), frameon=False)
     plt.tick_params(top=False, bottom=False, left=False, right=False, labelleft=False, labelbottom=False)
-    plt.box(False)        
+    plt.box(False)  
+    plt.tight_layout(pad=0.0, w_pad=0.0, h_pad=0.0)
+    plt.pcolormesh(times, frequencies, np.log(spectrogram)) # 20.*np.log10(np.abs(spectrogram)/10e-6) decibel
     plt.savefig(path_to_save, bbox_inches='tight', pad_inches=0)
 
 def pre_processing(path_to_csv, path_to_audios_folders):
@@ -98,7 +100,7 @@ def pre_processing(path_to_csv, path_to_audios_folders):
     path_to_audios_folders = os.path.join(dirname, path_to_audios_folders)    
     path_spect_cat = os.path.join(dirname, '../dados/spect')    
     for k in deviation_df.keys():
-        os.makedirs(os.path.join(path_spect_cat, 'desvio_'+k), exist_ok=True)
+        os.makedirs(os.path.join(path_spect_cat, 'desvio_{}'.format(k)), exist_ok=True)
 
 
     # getting all splited audios from data csv
@@ -116,11 +118,11 @@ def pre_processing(path_to_csv, path_to_audios_folders):
             index += 1
 
             if(row[1] < 10):                
-                audio_path = os.path.join(path_to_audios_folders, 'pac00' + str(int(row[1])))
+                audio_path = os.path.join(path_to_audios_folders, 'pac00{}'.format(int(row[1])))
             elif(row[1] < 100):                
-                audio_path = os.path.join(path_to_audios_folders, 'pac0' + str(int(row[1])))
+                audio_path = os.path.join(path_to_audios_folders, 'pac0{}'.format(int(row[1])))
             else:
-                audio_path = os.path.join(path_to_audios_folders, 'pac' + str(int(row[1])))                  
+                audio_path = os.path.join(path_to_audios_folders, 'pac{}'.format(int(row[1])))                  
             
             results.append(pool.apply_async(split_audio, args=(audio_path, 1000)))
 
@@ -129,20 +131,18 @@ def pre_processing(path_to_csv, path_to_audios_folders):
 
     pool.close()
     pool.join()
-
+    print('Áudios obtidos e cortados...')
 
     # saving all spectrograms from audios above
     min_len = min([len(value) for value in deviation_audios_list.values()])    
-    pool = multiprocessing.Pool(50)
+    pool = multiprocessing.Pool(20) # por razões de segurança...
     for key, value in deviation_audios_list.items():        
         for i in range(min_len):            
-            pool.apply_async(wav2spectrogram, args=(value[i], os.path.join(path_spect_cat, 'desvio_' + key, str(i) + '.png')))
+            pool.apply_async(wav2spectrogram, args=(value[i], os.path.join(path_spect_cat, 'desvio_{}'.format(key), '{}.png'.format(i))))
     pool.close()
     pool.join()
-
-    
-    print("Espectrogramas salvos em: " + path_spect_cat)
-    print('end...')
+    print('Espctrogramas das seções dos áudios salvas...')
+    print("Espectrogramas salvos em: {}".format(path_spect_cat))
 
 
 parser = argparse.ArgumentParser(description='Script pré-processar os áudios. Ele lê o csv, separa os áudios e os converte para espectrogramas.')
