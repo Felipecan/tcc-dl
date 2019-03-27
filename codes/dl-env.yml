@@ -6,8 +6,10 @@ dependencies:
   - python=3.5
   - numpy
   - pandas
-  - matplotlib
+  - opencv
   - tensorflow
   - scipy
   - pydub
   - futures
+  - pip:
+    - matplotlib
