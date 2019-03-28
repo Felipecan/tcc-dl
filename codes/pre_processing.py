@@ -56,12 +56,14 @@ def wav2spectrogram(audio_file, path_to_save):
     ''' 
     
     frequencies, times, spectrogram = signal.spectrogram(np.array(audio_file.get_array_of_samples()), audio_file.frame_rate)
-    plt.figure(figsize=(2.24,2.24), frameon=False)
     plt.tick_params(top=False, bottom=False, left=False, right=False, labelleft=False, labelbottom=False)
     plt.box(False)  
     plt.tight_layout(pad=0.0, w_pad=0.0, h_pad=0.0)
-    plt.pcolormesh(times, frequencies, np.log(spectrogram)) # 20.*np.log10(np.abs(spectrogram)/10e-6) decibel
-    plt.savefig(path_to_save, bbox_inches='tight', pad_inches=0)
+    plt.pcolormesh(times, frequencies, np.log(spectrogram)) # 20.*np.log10(np.abs(spectrogram)/10e-6) decibel    
+    plt.gcf().set_size_inches(2.24, 2.24)
+    plt.gcf().set_frameon(False)
+    plt.savefig(path_to_save)
+    plt.clf()
 
 def pre_processing(path_to_csv, path_to_audios_folders):
     '''
@@ -135,7 +137,7 @@ def pre_processing(path_to_csv, path_to_audios_folders):
 
     # saving all spectrograms from audios above
     min_len = min([len(value) for value in deviation_audios_list.values()])    
-    pool = multiprocessing.Pool(20) # por razões de segurança...
+    pool = multiprocessing.Pool(30) # sempre manter um valor seguro com a quantidade de threads...
     for key, value in deviation_audios_list.items():        
         for i in range(min_len):            
             pool.apply_async(wav2spectrogram, args=(value[i], os.path.join(path_spect_cat, 'desvio_{}'.format(key), '{}.png'.format(i))))
