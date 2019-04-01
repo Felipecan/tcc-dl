@@ -6,7 +6,6 @@ import multiprocessing
 from scipy import signal
 from pydub import AudioSegment
 import matplotlib.pyplot as plt
-from concurrent.futures import ThreadPoolExecutor, wait 
 
 
 def split_audio(path_to_audio, step):
@@ -80,10 +79,13 @@ def pre_processing(path_to_csv, path_to_audios_folders):
                 Caminho até as pastas que contem os áudios. Atenção que os áudios devem tá separados por pasta, nesse caso.
     ''' 
 
-    dirname, _ = os.path.split(os.path.abspath(__file__))   
+    dirname, _ = os.path.split(os.path.abspath(__file__))  
+
+    if(not os.path.isabs(path_to_csv)):
+        path_to_csv = os.path.join(dirname, path_to_csv)
 
     try:
-        csv_file = pd.read_csv(os.path.join(dirname, path_to_csv), sep=',', encoding='utf-8', low_memory=False)
+        csv_file = pd.read_csv(path_to_csv, sep=',', encoding='utf-8', low_memory=False)
     except IOError as e:
         print('Não foi possivel ler o arquivo[{}] corretamente. Encerrando programa...'.format(path_to_csv))
         raise SystemExit(e)        
@@ -95,17 +97,14 @@ def pre_processing(path_to_csv, path_to_audios_folders):
         '1': [],
         '2': []
     }
-    for k, v in deviation_df.items():
-        deviation_df[k] = csv_file[csv_file['Pres, Desvio EAV-G (VGe)'] == int(k)]   
-
-
-    path_to_audios_folders = os.path.join(dirname, path_to_audios_folders)    
-    path_spect_cat = os.path.join(dirname, '../dados/spect')    
-    for k in deviation_df.keys():
-        os.makedirs(os.path.join(path_spect_cat, 'desvio_{}'.format(k)), exist_ok=True)
+    for key, value in deviation_df.items():
+        deviation_df[key] = csv_file[csv_file['Pres, Desvio EAV-G (VGe)'] == int(key)]      
 
 
     # getting all splited audios from data csv
+    if(not os.path.isabs(path_to_audios_folders)):
+        path_to_audios_folders = os.path.join(dirname, path_to_audios_folders)
+
     deviation_audios_list = {}     
     min_len = min([len(value.index) for value in deviation_df.values()])                    
     pool = multiprocessing.Pool(20)
@@ -136,20 +135,26 @@ def pre_processing(path_to_csv, path_to_audios_folders):
     print('Áudios obtidos e cortados...')
 
     # saving all spectrograms from audios above
+    path_spect = os.path.join(dirname, '../dados/spect')    
+    for k in deviation_df.keys():
+        os.makedirs(os.path.join(path_spect, 'desvio_{}'.format(k)), exist_ok=True)
+
     min_len = min([len(value) for value in deviation_audios_list.values()])    
     pool = multiprocessing.Pool(30) # sempre manter um valor seguro com a quantidade de threads...
     for key, value in deviation_audios_list.items():        
         for i in range(min_len):            
-            pool.apply_async(wav2spectrogram, args=(value[i], os.path.join(path_spect_cat, 'desvio_{}'.format(key), '{}.png'.format(i))))
+            pool.apply_async(wav2spectrogram, args=(value[i], os.path.join(path_spect, 'desvio_{}'.format(key), '{}.png'.format(i))))
     pool.close()
     pool.join()
     print('Espctrogramas das seções dos áudios salvas...')
-    print("Espectrogramas salvos em: {}".format(path_spect_cat))
+    print("Espectrogramas salvos em: {}".format(path_spect))
+    return path_spect
 
 
-parser = argparse.ArgumentParser(description='Script pré-processar os áudios. Ele lê o csv, separa os áudios e os converte para espectrogramas.')
-parser.add_argument('--csv', action='store', dest='csv', default='../dados/db-spect.csv', required=True, help='Nome/caminho do .csv com os dados para categorizar.')
-parser.add_argument('--audio_folders', action='store', dest='audio_folders', default='../dados/pac-audios', required=True, help='Nome/caminho do a pasta contendo as pastas com os áudios.')
-arguments = parser.parse_args()
+if(__name__ == '__main__'):
+    parser = argparse.ArgumentParser(description='Script pré-processar os áudios. Ele lê o csv, separa os áudios e os converte para espectrogramas.')
+    parser.add_argument('--csv', action='store', dest='csv', default='../dados/db-spect.csv', required=True, help='Nome/caminho do .csv com os dados para categorizar.')
+    parser.add_argument('--audio_folders', action='store', dest='audio_folders', default='../dados/pac-audios', required=True, help='Nome/caminho da pasta contendo as pastas com os áudios.')
+    arguments = parser.parse_args()
 
-pre_processing(arguments.csv, arguments.audio_folders)
+    pre_processing(arguments.csv, arguments.audio_folders)
