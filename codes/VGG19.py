@@ -104,7 +104,7 @@ class VGG19:
         for folder in os.listdir(path_to_spect_folders):
             
             files = os.listdir(os.path.join(path_to_spect_folders, folder))
-            files = files[:3]
+            files = files[:6]
             
             if '1' in folder:
                 one_hot_encoding = np.zeros((2,), dtype=np.int)
@@ -129,7 +129,7 @@ class VGG19:
                 else:                    
                     self.test_set['pics'].append(im)
                     self.test_set['labels'].append(one_hot_encoding)               
-
+        
 
     def train(self):
         '''

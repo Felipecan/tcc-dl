@@ -22,6 +22,5 @@ else:
 
     print('Starting training...')
     vgg19 = VGG19()
-    vgg19.config_db(path_spect)
-    print(len(vgg19.training_set['pics']))
+    vgg19.config_db(path_spect)    
     vgg19.train()

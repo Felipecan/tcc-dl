@@ -135,7 +135,7 @@ def pre_processing(path_to_csv, path_to_audios_folders):
     print('Áudios obtidos e cortados...')
 
     # saving all spectrograms from audios above
-    path_spect = os.path.join(dirname, '../dados/spect')    
+    path_spect = os.path.normpath(os.path.join(path_to_audios_folders, '../spect'))    
     for k in deviation_df.keys():
         os.makedirs(os.path.join(path_spect, 'desvio_{}'.format(k)), exist_ok=True)
 
