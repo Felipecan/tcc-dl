@@ -3,4 +3,4 @@
 ### Conteúdo:
 1. [codes](codes) - Conjunto de códigos usados
 
-Em construção....
+Esse repositório visa agrupar todos os códigos e informações relevantes para a construção do TCC.
