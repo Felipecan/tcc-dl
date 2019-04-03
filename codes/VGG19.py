@@ -104,7 +104,7 @@ class VGG19:
         for folder in os.listdir(path_to_spect_folders):
             
             files = os.listdir(os.path.join(path_to_spect_folders, folder))
-            files = files[:100]
+            files = files[:50]
             
             if '1' in folder:
                 one_hot_encoding = np.zeros((2,), dtype=np.int)
@@ -141,7 +141,7 @@ class VGG19:
                 
         '''   
         
-        sgd = SGD(lr=0.001, decay=1e-6, momentum=0.9, nesterov=True)
-        self.model.compile(optimizer=sgd, loss='categorical_crossentropy', metrics=['accuracy'])
-        self.model.fit(x=np.array(self.training_set['pics']).reshape(-1, 224, 224, 3), y=np.array(self.training_set['labels']), batch_size=1, epochs=3, validation_split=0.2)        
+        # sgd = SGD(lr=0.001, decay=1e-6, momentum=0.9, nesterov=True)
+        self.model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+        self.model.fit(x=np.array(self.training_set['pics']).reshape(-1, 224, 224, 3), y=np.array(self.training_set['labels']), batch_size=1, epochs=15, validation_split=0.2)        
         self.model.evaluate(np.array(self.test_set['pics']).reshape(-1, 224, 224, 3), np.array(self.test_set['labels']))         
