@@ -6,7 +6,6 @@ import multiprocessing
 from scipy import signal
 from pydub import AudioSegment
 import matplotlib.pyplot as plt
-from concurrent.futures import ThreadPoolExecutor, wait 
 
 
 def split_audio(path_to_audio, step):
@@ -15,11 +14,11 @@ def split_audio(path_to_audio, step):
             O funçao split_audio() separada um determinado áudio em várias partes.
 
         Utilização:
-            split_audio("/path/to/audio.wav", 1000).
+            split_audio("/path/to/audio", 1000).
 
         Parâmetros:                
             path_to_audio:
-                Caminho até o arquivo de áudio desejado.
+                Caminho até a pasta do áudio desejado.
             step:
                 Paço a que o áudio será divido, dado em milisegundos. Por exemplo 1000 equivale a 1000 ms, que é 1 s.
 
@@ -27,6 +26,14 @@ def split_audio(path_to_audio, step):
             Um lista de áudios que contem em cada posição, uma lista de áudios divididos. 
             Ex: audio[0] pode conter uma lista com 10 áudios da mesma fonte.
     '''   
+    
+    files = os.listdir(path_to_audio)
+    if('qv001.wav' in files):
+        path_to_audio = os.path.join(path_to_audio, 'qv001.wav')
+    elif('qv012.wav' in files):
+        path_to_audio = os.path.join(path_to_audio, 'qv012.wav')
+    else:
+        return []
     
     audio = AudioSegment.from_wav(path_to_audio)
     audios_list = [audio[start:start+step] for start in range(0, len(audio), step)]
@@ -48,10 +55,14 @@ def wav2spectrogram(audio_file, path_to_save):
     ''' 
     
     frequencies, times, spectrogram = signal.spectrogram(np.array(audio_file.get_array_of_samples()), audio_file.frame_rate)
-    plt.pcolormesh(times, frequencies, np.log(spectrogram)) # 20.*np.log10(np.abs(spectrogram)/10e-6) decibel
     plt.tick_params(top=False, bottom=False, left=False, right=False, labelleft=False, labelbottom=False)
-    plt.box(False)        
-    plt.savefig(path_to_save, bbox_inches='tight', pad_inches=0)
+    plt.box(False)  
+    plt.tight_layout(pad=0.0, w_pad=0.0, h_pad=0.0)
+    plt.pcolormesh(times, frequencies, np.log(spectrogram)) # 20.*np.log10(np.abs(spectrogram)/10e-6) decibel    
+    plt.gcf().set_size_inches(2.24, 2.24)
+    plt.gcf().set_frameon(False)
+    plt.savefig(path_to_save)
+    plt.clf()
 
 def pre_processing(path_to_csv, path_to_audios_folders):
     '''
@@ -108,11 +119,11 @@ def pre_processing(path_to_csv, path_to_audios_folders):
             index += 1
 
             if(row[1] < 10):                
-                audio_path = os.path.join(path_to_audios_folders, 'pac00' + str(int(row[1])), 'qv002.wav')
+                audio_path = os.path.join(path_to_audios_folders, 'pac00' + str(int(row[1])))
             elif(row[1] < 100):                
-                audio_path = os.path.join(path_to_audios_folders, 'pac0' + str(int(row[1])), 'qv002.wav')
+                audio_path = os.path.join(path_to_audios_folders, 'pac0' + str(int(row[1])))
             else:
-                audio_path = os.path.join(path_to_audios_folders, 'pac' + str(int(row[1])), 'qv002.wav')                  
+                audio_path = os.path.join(path_to_audios_folders, 'pac' + str(int(row[1])))                  
             
             results.append(pool.apply_async(split_audio, args=(audio_path, 1000)))
 
@@ -124,7 +135,7 @@ def pre_processing(path_to_csv, path_to_audios_folders):
 
     # saving all spectrograms from audios above
     min_len = min([len(value) for value in pathologies_audios_list.values()])
-    pool = multiprocessing.Pool(40)
+    pool = multiprocessing.Pool(30)
     for key, value in pathologies_audios_list.items():        
         for i in range(min_len):            
             pool.apply_async(wav2spectrogram, args=(value[i], os.path.join(path_spect_cat, key, str(i) + '.png')))
