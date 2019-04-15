@@ -10,7 +10,6 @@ from tensorflow.keras.preprocessing import image
 from tensorflow.keras.models import Sequential, model_from_json, load_model
 
 
-
 class VGG19:
 
 
@@ -103,8 +102,7 @@ class VGG19:
             print('folder: {}'.format(folder))
 
             files = os.listdir(os.path.join(path_to_spect_folders, folder))
-            print('Number of files: {}'.format(len(files)))
-            
+            print('Number of files: {}'.format(len(files))) 
             
             if '1' in folder:
                 one_hot_encoding = np.zeros((2,), dtype=np.int)
@@ -156,6 +154,7 @@ class VGG19:
         val_loss = history.history['val_loss']
         epochs = range(len(acc))
 
+        # Isso é PÉSSIMO, mas é só para testes...
         import matplotlib.pyplot as plt
         plt.plot(epochs, acc, 'bo', label='Training acc')
         plt.plot(epochs, val_acc, 'b', label='Validation acc')
