@@ -102,11 +102,8 @@ class VGG19:
             print('folder: {}'.format(folder))
 
             files = os.listdir(os.path.join(path_to_spect_folders, folder))
-<<<<<<< HEAD
             print('Number of files: {}'.format(len(files))) 
-=======
-            files = files[:50]
->>>>>>> df40ca1be522bbdb84373290964c6203e716c268
+
             
             if '1' in folder:
                 one_hot_encoding = np.zeros((2,), dtype=np.int)
@@ -145,17 +142,12 @@ class VGG19:
                 
         '''   
         
-<<<<<<< HEAD
+
         sgd = SGD(lr=0.001, decay=1e-6, momentum=0.9, nesterov=True)
         # loss='sparse_categorical_crossentropy'
         callbacks_list = [keras.callbacks.ModelCheckpoint('./best_weights.hdf5', monitor='val_acc', verbose=1, save_best_only=True, save_weights_only=True)]
         self.model.compile(optimizer=sgd, loss='categorical_crossentropy', metrics=['accuracy'])
         history = self.model.fit(x=np.array(self.training_set['pics']).reshape(-1, 224, 224, 3), y=np.array(self.training_set['labels']), batch_size=16, epochs=15, validation_split=0.111, callbacks=callbacks_list)        
-=======
-        # sgd = SGD(lr=0.001, decay=1e-6, momentum=0.9, nesterov=True)
-        self.model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
-        self.model.fit(x=np.array(self.training_set['pics']).reshape(-1, 224, 224, 3), y=np.array(self.training_set['labels']), batch_size=1, epochs=15, validation_split=0.2)        
->>>>>>> df40ca1be522bbdb84373290964c6203e716c268
         self.model.evaluate(np.array(self.test_set['pics']).reshape(-1, 224, 224, 3), np.array(self.test_set['labels']))         
 
         acc = history.history['acc']
