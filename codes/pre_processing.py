@@ -1,4 +1,5 @@
 import os
+import random
 import argparse
 import numpy as np
 import pandas as pd
@@ -80,7 +81,7 @@ def pre_processing(path_to_csv, path_to_audios_folders):
     ''' 
 
     dirname, _ = os.path.split(os.path.abspath(__file__))  
-
+    
     if(not os.path.isabs(path_to_csv)):
         path_to_csv = os.path.join(dirname, path_to_csv)
 
@@ -89,34 +90,65 @@ def pre_processing(path_to_csv, path_to_audios_folders):
     except IOError as e:
         print('Não foi possivel ler o arquivo[{}] corretamente. Encerrando programa...'.format(path_to_csv))
         raise SystemExit(e)        
-        
+    
+    # drop all elements with null and all columns that no matters (all columns except NÚMERO PACT and Pres, Desvio EAV-G (VGe)).
     csv_file.dropna(subset=['Pres, Desvio EAV-G (VGe)'], inplace=True)
     csv_file.drop(csv_file.columns.difference(['NÚMERO PACT', 'Pres, Desvio EAV-G (VGe)']), axis=1, inplace=True)
        
+    # for this pre processing, we're using only deviation presence, deviation 1 and deviation 2. 
+    # then, we create a dict with keys to correpondent deviation and value to dataframe containing only patient with respective deviation.
     deviation_df = {
-        '1': [],
-        '2': []
+        '1': [], #52
+        '2': []  #437 
     }
     for key, value in deviation_df.items():
         deviation_df[key] = csv_file[csv_file['Pres, Desvio EAV-G (VGe)'] == int(key)]      
-
-
-    # getting all splited audios from data csv
+    
+    # getting the smallest dataframe to balanced the classes and select the patients randomly
+    samallest_len = min([len(value.index) for value in deviation_df.values()])      
+    for key, value in deviation_df.items():
+        temp_select_list = random.sample(range(0, len(deviation_df[key].index)), samallest_len)
+        deviation_df[key] = deviation_df[key].iloc[temp_select_list]
+    
+    
+    
     if(not os.path.isabs(path_to_audios_folders)):
         path_to_audios_folders = os.path.join(dirname, path_to_audios_folders)
 
+
+
+    # separating a set of patient to use on test of predict, that is, use this patient with the complete audio and observe your result.
+    for key, value in deviation_df.items():
+        temp = random.sample(range(0, len(deviation_df[key].index)), int(samallest_len*0.1)) # 10% of patients are for predict test    
+        temp_df = deviation_df[key].iloc[temp]
+        deviation_df[key] = pd.concat([deviation_df[key], temp_df])
+        deviation_df[key].drop_duplicates(subset='NÚMERO PACT', keep=False, inplace=True)
+                
+        path_patients_predict = os.path.normpath(os.path.join(path_to_audios_folders, '../pre_processing/predict'))           
+        path_deviation = os.path.join(path_patients_predict, 'desvio_{}'.format(key))
+        os.makedirs(path_deviation, exist_ok=True)                
+        
+        for row in temp_df.itertuples():
+            if(row[1] < 10):                
+                audio_path = os.path.join(path_to_audios_folders, 'pac00{}'.format(int(row[1])))                
+            elif(row[1] < 100):                
+                audio_path = os.path.join(path_to_audios_folders, 'pac0{}'.format(int(row[1])))            
+            else:
+                audio_path = os.path.join(path_to_audios_folders, 'pac{}'.format(int(row[1])))  
+            os.system('cp -r '+audio_path + ' ' + path_deviation)        
+                
+
+    # --- getting all splited audios from data csv ---
+
+    # if(not os.path.isabs(path_to_audios_folders)):
+    #     path_to_audios_folders = os.path.join(dirname, path_to_audios_folders)
+        
     deviation_audios_list = {}     
-    min_len = min([len(value.index) for value in deviation_df.values()])                    
     pool = multiprocessing.Pool(20)
     for key, value in deviation_df.items():
     
-        index = 0
         results = []
         for row in value.itertuples():
-    
-            if index == min_len:
-                break            
-            index += 1
 
             if(row[1] < 10):                
                 audio_path = os.path.join(path_to_audios_folders, 'pac00{}'.format(int(row[1])))
@@ -125,7 +157,7 @@ def pre_processing(path_to_csv, path_to_audios_folders):
             else:
                 audio_path = os.path.join(path_to_audios_folders, 'pac{}'.format(int(row[1])))                  
             
-            results.append(pool.apply_async(split_audio, args=(audio_path, 1000)))
+            results.append(pool.apply_async(split_audio, args=(audio_path, 200)))
 
         splitted_audios = [results[i].get(timeout=None) for i in range(len(results))]
         deviation_audios_list.update({key: sum(splitted_audios, [])})
@@ -135,7 +167,7 @@ def pre_processing(path_to_csv, path_to_audios_folders):
     print('Áudios obtidos e cortados...')
 
     # saving all spectrograms from audios above
-    path_spect = os.path.normpath(os.path.join(path_to_audios_folders, '../spect'))    
+    path_spect = os.path.normpath(os.path.join(path_to_audios_folders, '../pre_processing/spectrograms'))    
     for k in deviation_df.keys():
         os.makedirs(os.path.join(path_spect, 'desvio_{}'.format(k)), exist_ok=True)
 
@@ -154,7 +186,7 @@ def pre_processing(path_to_csv, path_to_audios_folders):
 if(__name__ == '__main__'):
     parser = argparse.ArgumentParser(description='Script pré-processar os áudios. Ele lê o csv, separa os áudios e os converte para espectrogramas.')
     parser.add_argument('--csv', action='store', dest='csv', default='../dados/db-spect.csv', required=True, help='Nome/caminho do .csv com os dados para categorizar.')
-    parser.add_argument('--audio_folders', action='store', dest='audio_folders', default='../dados/pac-audios', required=True, help='Nome/caminho da pasta contendo as pastas com os áudios.')
+    parser.add_argument('--audios', action='store', dest='audio_folders', default='../dados/pac-audios', required=True, help='Nome/caminho da pasta contendo as pastas com os áudios.')
     arguments = parser.parse_args()
 
     pre_processing(arguments.csv, arguments.audio_folders)
