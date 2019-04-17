@@ -8,7 +8,7 @@ from tensorflow.keras.optimizers import *
 from tensorflow.keras.applications import *
 from tensorflow.keras.preprocessing import image
 from tensorflow.keras.models import Sequential, model_from_json, load_model
-
+import pre_processing
 
 class VGG19:
 
@@ -172,3 +172,50 @@ class VGG19:
         plt.savefig('./loss.png')
 
         plt.show()
+
+    def predict(self, path_to_audio):
+        '''
+            Descrição:
+                
+
+            Utilização:
+                
+
+            Parâmetros:                
+                
+
+            Retorno:
+                
+        '''   
+
+        # temos que fazer o predict
+        # vou pegar um áudio completo
+        dirname, _ = os.path.split(os.path.abspath(__file__))  
+        if(not os.path.isabs(path_to_audio)):
+            path_to_audio = os.path.join(dirname, path_to_audio)
+
+        audio_list = pre_processing.split_audio(path_to_audio, 200)
+        
+        spectrograms_folder_temp = os.path.join(path_to_audio, 'temp')
+        os.makedirs(spectrograms_folder_temp, exist_ok=True)
+        for i in range(len(audio_list)):            
+            pre_processing.wav2spectrogram(audio_list[i], os.path.join(spectrograms_folder_temp, '{}.png'.format(i)))
+        
+        # pred=[]
+        # for f in os.listdir(spectrograms_folder_temp):
+        #     im = cv2.imread(os.path.join(spectrograms_folder_temp, f))
+        #     im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
+        #     pred.append(self.model.predict(im, batch_size=16))
+
+        # print(pred)
+        # os.system('rm -r {}'.format(os.path.join(path_to_audio, 'temp')))
+
+    def test_predict(self, path_to_class):
+        dirname, _ = os.path.split(os.path.abspath(__file__))  
+        if(not os.path.isabs(path_to_class)):
+            path_to_class = os.path.join(dirname, path_to_class)
+
+        for c in os.listdir(path_to_class):
+            print('predict to {}'.format(c))
+            for patient in os.listdir(os.path.join(path_to_class, c)):
+                self.predict(os.path.join(path_to_class, c, patient))

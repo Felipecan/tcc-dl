@@ -135,7 +135,7 @@ def pre_processing(path_to_csv, path_to_audios_folders):
                 audio_path = os.path.join(path_to_audios_folders, 'pac0{}'.format(int(row[1])))            
             else:
                 audio_path = os.path.join(path_to_audios_folders, 'pac{}'.format(int(row[1])))  
-            os.system('cp -r '+audio_path + ' ' + path_deviation)        
+            os.system('cp -r {} {}'.format(audio_path, path_deviation))
                 
 
     # --- getting all splited audios from data csv ---
