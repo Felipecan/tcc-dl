@@ -36,14 +36,6 @@ def split_audio(path_to_audio, step):
         else:
             return []
     
-    files = os.listdir(path_to_audio)
-    if('qv001.wav' in files):
-        path_to_audio = os.path.join(path_to_audio, 'qv001.wav')
-    elif('qv012.wav' in files):
-        path_to_audio = os.path.join(path_to_audio, 'qv012.wav')
-    else:
-        return []
-    
     audio = AudioSegment.from_wav(path_to_audio)
     audios_list = [audio[start:start+step] for start in range(0, len(audio), step)]
     return audios_list
