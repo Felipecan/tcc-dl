@@ -27,14 +27,14 @@ def split_audio(path_to_audio, step):
             Um lista de áudios que contem em cada posição, uma parte do áudio original. 
             Caso o áudio não seje encontrado, retorna uma lista vazia.            
     '''   
-    
-    files = os.listdir(path_to_audio)
-    if('qv001.wav' in files):
-        path_to_audio = os.path.join(path_to_audio, 'qv001.wav')
-    elif('qv012.wav' in files):
-        path_to_audio = os.path.join(path_to_audio, 'qv012.wav')
-    else:
-        return []
+    if(not os.path.isfile(path_to_audio)):        
+        files = os.listdir(path_to_audio)
+        if('qv001.wav' in files):
+            path_to_audio = os.path.join(path_to_audio, 'qv001.wav')
+        elif('qv012.wav' in files):
+            path_to_audio = os.path.join(path_to_audio, 'qv012.wav')
+        else:
+            return []
     
     audio = AudioSegment.from_wav(path_to_audio)
     audios_list = [audio[start:start+step] for start in range(0, len(audio), step)]
@@ -111,22 +111,22 @@ def pre_processing(path_to_csv, path_to_audios_folders):
         deviation_df[key] = deviation_df[key].iloc[temp_select_list]
     
     
-    
+    # getting the better path to patients folders.
+    # this path is gonna be used to pre processing the patients for predicting and to splitting audios to training
     if(not os.path.isabs(path_to_audios_folders)):
         path_to_audios_folders = os.path.join(dirname, path_to_audios_folders)
-
-
 
     # separating a set of patient to use on test of predict, that is, use this patient with the complete audio and observe your result.
     for key, value in deviation_df.items():
         temp = random.sample(range(0, len(deviation_df[key].index)), int(samallest_len*0.1)) # 10% of patients are for predict test    
         temp_df = deviation_df[key].iloc[temp]
-        deviation_df[key] = pd.concat([deviation_df[key], temp_df])
+        deviation_df[key] = pd.concat([deviation_df[key], temp_df]) # remove patient to dataframe for training, validation e teest
         deviation_df[key].drop_duplicates(subset='NÚMERO PACT', keep=False, inplace=True)
-                
+
+        # -----> coping folders to other directory... it's gonna be used in predict after.      
         path_patients_predict = os.path.normpath(os.path.join(path_to_audios_folders, '../pre_processing/predict'))           
-        path_deviation = os.path.join(path_patients_predict, 'desvio_{}'.format(key))
-        os.makedirs(path_deviation, exist_ok=True)                
+        path_predict_deviation = os.path.join(path_patients_predict, 'desvio_{}'.format(key))
+        os.makedirs(path_predict_deviation, exist_ok=True)                
         
         for row in temp_df.itertuples():
             if(row[1] < 10):                
@@ -135,14 +135,10 @@ def pre_processing(path_to_csv, path_to_audios_folders):
                 audio_path = os.path.join(path_to_audios_folders, 'pac0{}'.format(int(row[1])))            
             else:
                 audio_path = os.path.join(path_to_audios_folders, 'pac{}'.format(int(row[1])))  
-            os.system('cp -r {} {}'.format(audio_path, path_deviation))
+            os.system('cp -r {} {}'.format(audio_path, path_predict_deviation))
                 
 
-    # --- getting all splited audios from data csv ---
-
-    # if(not os.path.isabs(path_to_audios_folders)):
-    #     path_to_audios_folders = os.path.join(dirname, path_to_audios_folders)
-        
+    # --- getting all splited audios from data csv ---        
     deviation_audios_list = {}     
     pool = multiprocessing.Pool(20)
     for key, value in deviation_df.items():

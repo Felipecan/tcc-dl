@@ -13,9 +13,8 @@ arguments = parser.parse_args()
 if(arguments.mode == 'training'):
     print("Entering on training mode...")
     vgg19 = VGG19()
-    #vgg19.config_db(arguments.spect_folders)    
-    #vgg19.train()
-    vgg19.test_predict('../dados/pre_processing/predict')
+    vgg19.config_db(arguments.spect_folders)    
+    vgg19.train()
 else:
     print('Entering on all mode...')    
     print('First, starting the pre processing of the datas...')    
