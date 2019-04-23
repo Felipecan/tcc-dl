@@ -60,7 +60,7 @@ def wav2spectrogram(audio_file, path_to_save):
     plt.box(False)  
     plt.tight_layout(pad=0.0, w_pad=0.0, h_pad=0.0)
     plt.pcolormesh(times, frequencies, np.log(spectrogram)) # 20.*np.log10(np.abs(spectrogram)/10e-6) decibel    
-    plt.gcf().set_size_inches(2.24, 2.24)
+    # plt.gcf().set_size_inches(2.24, 2.24)
     plt.gcf().set_frameon(False)
     plt.savefig(path_to_save)
     plt.clf()
