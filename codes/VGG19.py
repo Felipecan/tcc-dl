@@ -10,7 +10,7 @@ from tensorflow.keras.preprocessing import image
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.models import Sequential, model_from_json, load_model
 
-import pre_processing
+from util import split_audio, wav2spectrogram
 import matplotlib.pyplot as plt
 import multiprocessing
 
@@ -201,13 +201,13 @@ class VGG19:
             dirname, _ = os.path.split(os.path.abspath(__file__))
             path_to_audio = os.path.join(dirname, path_to_audio)
 
-        audio_list = pre_processing.split_audio(path_to_audio, 200)
+        audio_list = split_audio(path_to_audio, 200)
         print('------> Audios splitted in rate of {} ms by section.'.format(200))
         
         spectrograms_folder_temp = os.path.join(path_to_audio, '../temp')
         os.makedirs(spectrograms_folder_temp, exist_ok=True)
         for i in range(len(audio_list)):            
-            pre_processing.wav2spectrogram(audio_list[i], os.path.join(spectrograms_folder_temp, '{}.png'.format(i)))
+            wav2spectrogram(audio_list[i], os.path.join(spectrograms_folder_temp, '{}.png'.format(i)))
         print('------> Images saved in a temp folder. Images total: {}'.format(len(audio_list)))
         
         print('------> Predicting audio file from saved images...')

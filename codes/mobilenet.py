@@ -221,29 +221,3 @@ class MobileNet:
         plt.savefig('acc.png')
         plt.savefig('acc.pdf')
         plt.clf()
-
-    # def predict(self, path_to_audios):
-    #     '''
-    #         Descrição:
-                
-
-    #         Utilização:
-                
-
-    #         Parâmetros:                
-                
-
-    #         Retorno:
-                
-    #     '''   
-
-    #     # temos que fazer o predict
-    #     # vou pegar um áudio completo
-    #     dirname, _ = os.path.split(os.path.abspath(__file__))  
-
-    #     if(not os.path.isabs(path_to_audios_folders)):
-    #         path_to_audios_folders = os.path.join(dirname, path_to_audios_folders)
-
-
-
-
