@@ -9,7 +9,7 @@ from util import split_audio, wav2spectrogram
 
 CLASSES_DF = {
     '1': [], 
-    '2': []
+    '2': []    
 }
 TABLE_COLUMN = 'Pres, Desvio EAV-G (VGe)'
 
@@ -88,7 +88,7 @@ def pre_processing(csv_path, path_to_audios_folders):
         CLASSES_DF[key].drop_duplicates(subset='NÚMERO PACT', keep=False, inplace=True)
 
         # -----> coping folders to other directory... it's gonna be used in predict after.                         
-        path_predict_deviation = os.path.join(path_to_preprocessed_files, 'predict', '{}'.format(key))
+        path_predict_deviation = os.path.join(path_to_preprocessed_files, 'predict', '{}'.format(key.replace(' ', '-')))
         os.makedirs(path_predict_deviation, exist_ok=True)                
         
         for row in temp_df.itertuples():
@@ -106,11 +106,12 @@ def pre_processing(csv_path, path_to_audios_folders):
             results = []
             for row in value.itertuples():               
                 audio_path = os.path.join(path_to_audios_folders,  get_patient_folder_name(row[1]))
-                results.append(pool.apply_async(split_audio, args=(audio_path, 200)))
+                results.append(pool.apply_async(split_audio, args=(audio_path, 2000)))
 
             splitted_audios = [results[i].get(timeout=None) for i in range(len(results))]
             audios_by_class.update({key: sum(splitted_audios, [])})    
     except:
+        pool.terminate()
         print('Removing {} folder.'.format(path_to_preprocessed_files))
         os.system('rm -r {}'.format(path_to_preprocessed_files))
         raise Exception('Some unexpected error occurred while processing the audio...')
@@ -123,13 +124,15 @@ def pre_processing(csv_path, path_to_audios_folders):
         len_smallest_audio = min([len(value) for value in audios_by_class.values()])    
         for key, value in audios_by_class.items():  
             
-            os.makedirs(os.path.join(spectrogram_path, '{}'.format(key)), exist_ok=True)      
+            class_path = os.path.join(spectrogram_path, '{}'.format(key.replace(' ', '-')))
+            os.makedirs(class_path, exist_ok=True)      
             for i in range(len_smallest_audio):            
-                pool.apply_async(wav2spectrogram, args=(value[i], os.path.join(spectrogram_path, '{}'.format(key), '{}.png'.format(i))))
+                pool.apply_async(wav2spectrogram, args=(value[i], os.path.join(class_path, '{}.png'.format(i))))
         
         pool.close()
         pool.join()
     except:
+        pool.terminate()
         print('Removing {} folder.'.format(path_to_preprocessed_files))
         os.system('rm -r {}'.format(path_to_preprocessed_files))
         raise Exception('Some unexpected error occurred while generating the spectrograms...')
