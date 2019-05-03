@@ -5,5 +5,4 @@ __pycache__
 .vscode/
 dados/
 
-codes/*.wav
-codes/*.png
+codes/

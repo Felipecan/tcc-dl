@@ -61,11 +61,41 @@ def pre_processing(csv_path, path_to_audios_folders):
         raise Exception('Could not read the file [{}] correctly. Closing program...'.format(csv_path))
                      
     
+    
+    
+    print(len(csv_file.index))
+    print(csv_file.head(20))
+    input()
+    
+    import glob
+    patient_folders = glob.glob('./dados/pac-audios/pac*')
+    vetor = [int(''.join(filter(str.isdigit, patient))) for patient in patient_folders]
+    patient_qv001 = glob.glob('./dados/pac-audios/pac*/qv001.wav')
+    patient_qv012 = glob.glob('./dados/pac-audios/pac*/qv012.wav')
+    patient_qv001 = [i.replace('/qv001.wav', '') for i in patient_qv001]
+    patient_qv012 = [i.replace('/qv012.wav', '') for i in patient_qv012]
+    intesect_qv001_qv012 = []
+    for patient in patient_qv012:
+        if not (patient in patient_qv001):
+            intesect_qv001_qv012.append(patient)
+    all_patients_valid = patient_qv001 + intesect_qv001_qv012
+    all_patients_valid = [int(''.join(filter(str.isdigit, p))) for p in all_patients_valid]
+    all_patients_valid = [str(p) for p in all_patients_valid]
+    print(len(all_patients_valid))
+    print(all_patients_valid)
+    input()
+
+    csv_file = csv_file.loc[csv_file['NÚMERO PACT'].isin(all_patients_valid)]
+    print(len(csv_file.index))
+    print(csv_file.head(20))
+    input()
+
+
+
+
     # drop all elements with null and all columns that no matters (all columns except NÚMERO PACT and Pres, Desvio EAV-G (VGe)).
     csv_file.dropna(subset=[TABLE_COLUMN], inplace=True)
-    csv_file.drop(csv_file.columns.difference(['NÚMERO PACT', TABLE_COLUMN]), axis=1, inplace=True)
-
-    # AQUI DEVE ENTRAR O TRATAMENTO COM AS PASTAS SEM ÁUDIO
+    csv_file.drop(csv_file.columns.difference(['NÚMERO PACT', TABLE_COLUMN]), axis=1, inplace=True)    
     
     # for this pre processing, we're using only deviation presence, deviation 1 and deviation 2. 
     # then, we fill the dictionary with keys to classes with these values
