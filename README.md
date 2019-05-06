@@ -1,47 +1,51 @@
-## Pasta destinada aos códigos relacionados ao TCC
+# Repository for codes related to the course completion work.
 
-### Configurando e instalando as dependências necessárias para executar os códigos:
+### This work aims to build a convolutional network to detect, initially, the presence of deviation in patients. From the audios obtained from examinations made by phonoaudiologists, converts them to spectograms and then an analysis is made using a convolutional network.
 
-Instale o [Minconda3](https://conda.io/en/latest/miniconda.html) de acordo com o seu sistema.
+### Configuring and installing the required dependencies to run the codes:
 
-Clone o repositório atual, dentro da pasta [codes]() ira conter o arquivo [dl-env.yml](dl-env.yml), que descreve as configurações de ambiente que será usada.
+Install [Minconda3](https://conda.io/en/latest/miniconda.html) according to your system.
 
-No terminal, dê o seguinte comando para criar o ambiente:
+Clone the current repository, inside the folder will contain the file [dl-env.yml](dl-env.yml), which describes the environment settings that will be used.
+
+On the terminal, give the following command to create the environment:
 
 ```sh
 $ conda env create --file dl-env.yml
 ```
 
-Após criado o ambiente, para ativá-lo use o comando no terminal do Linux:
+After creating the environment, to activate it, use the command in the Linux terminal:
 ```sh
 $ conda activate tcc-env-cpu
 ```
 
-Caso tenha configurado a placa de vídeo e deseje utilizar a GPU, execute o primeiro comando (para criar o ambiente), mas utilizando o arquivo [dl-env-gpu.yml](dl-env-gpu.yml). Apos isso, para ativar o ambiente: 
+If you have configured the video card and want to use the GPU, run the first command (to create the environment), but using the [dl-env-gpu.yml](dl-env-gpu.yml) file. After that, to activate the environment:
 ```sh
 $ conda activate tcc-env-gpu
 ```
-### As funcionalidades dos scripts e como executá-los
 
-[pre_processing.py](pre_processing.py): Esse arquivo faz o pre processamento dos dados que serão usados na rede. Ele separa os dados do csv para cada áudio e obtem os espectrogramas dos mesmo. 
+_Note that the environment name can be changed in the [dl-env.yml](dl-env.yml) or [dl-env-gpu.yml](dl-env-gpu.yml) file in the first line._
 
-Para executar o script:
+### The functionality of scripts and how to execute them
+
+[pre_processing.py](pre_processing.py): This file preprocesses the data that will be used on the network. It separates the csv data for each audio and obtains the spectrograms from them.
+
+To run the script:
 ```sh
-$ python pre_processing.py --csv caminho/para/arquivo.csv --audio_folders caminho/para/pastas_audios
+$ python pre_processing.py --csv path/to/file.csv --audios path/to/audios_folders
 ```
 
-[VGG19.py](VGG19.py): Esse arquivo é uma classe que contém a implementação da rede convolucional VGG19 apresentada por *Simonyan and Zisserman* em 2014.
+[model.py](model.py): This file is a class that contains the implementation of the convolutional network VGG19 presented by *Simonyan and Zisserman* in 2014, as well as MobileNet. Which network will be used should be informed in the Model class constructor.
 
-[main.py](main.py): Esse script tem como função executar todas as tarefas até agora apresentada. Ele funciona de duas maneiras: chamando as funções da [VGG19](VGG19.py) ou combinado com o [pré-processamento](pre_processing.py) para pré-processar os dados e treinar a rede de uma vez só.
+[main.py](main.py): This script has the function to perform all tasks so far presented. It works in two ways: by calling the functions of [model](model.py) or combined with [preprocessing](pre_processing.py) to preprocess data and train the network all at once.
 
-Para executar o script [main.py](main.py) somente como treino (os dados devem está pre-processados):
+To run the [main.py](main.py) script only as training (data must be pre-processed):
 ```sh
-$ python main.py --spect_folders /caminho/para/pastas_espectrogramas --mode training
+$ python main.py --spectrograms /path/to/spectrograms_folder --mode training
 ```
 
-Para executar o script [main.py](main.py) combinando o pré-processamento com o treinamento:
+To run the [main.py](main.py) script by combining preprocessing with training:
 ```sh
-$ python main.py --mode all_proc --csv caminho/para/arquivo.csv --audio_folders caminho/para/pastas_audios 
+$ python main.py --mode all_process --csv path/to/file.csv --audios path/to/audios_folders
 ```
 
-Obs 1: O nome do ambiente pode ser mudado no arquivo [dl-env.yml](dl-env.yml), primeira linha.
