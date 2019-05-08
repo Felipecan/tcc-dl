@@ -47,7 +47,7 @@ def wav_to_spectrogram(audio_file, path_to_save):
         Use:
             wav2spectrogram(audio_file, '/path/to/save/image.png')
 
-        Return:
+        Parameters:
             audio_file:
                 Audio file of type pydub.AudioSegment.
             path_to_save:
@@ -55,6 +55,13 @@ def wav_to_spectrogram(audio_file, path_to_save):
     '''
 
     frequencies, times, spectrogram = signal.spectrogram(np.array(audio_file.get_array_of_samples()), audio_file.frame_rate)
+    # fmin = 0000 # Hz
+    # fmax = 4000 # Hz
+    # freq_slice = np.where((frequencies >= fmin) & (frequencies <= fmax))
+    # # keep only frequencies of interest
+    # frequencies = frequencies[freq_slice]
+    # spectrogram = spectrogram[freq_slice,:][0]
+
     plt.tick_params(top=False, bottom=False, left=False, right=False, labelleft=False, labelbottom=False)
     plt.box(False)
     plt.tight_layout(pad=0.0, w_pad=0.0, h_pad=0.0)

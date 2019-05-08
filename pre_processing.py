@@ -4,6 +4,7 @@ import random
 import argparse
 import pandas as pd
 import multiprocessing
+import distutils.dir_util as dir_util
 from util import split_audio, wav_to_spectrogram
 
 
@@ -145,7 +146,7 @@ def pre_processing(csv_path, path_to_audios_folders):
     # audio and observe your result.
     for key, value in CLASSES_DF.items():
 
-        temp = random.sample(range(0, len(CLASSES_DF[key].index)), int(len_smallest_df*0.1)) # 10% of patients are for predict test
+        temp = random.sample(range(0, len(CLASSES_DF[key].index)), int(len_smallest_df*0.3)) # 30% of patients are for predict test
         temp_df = CLASSES_DF[key].iloc[temp]
         CLASSES_DF[key] = pd.concat([CLASSES_DF[key], temp_df]) # remove patient to dataframe for training, validation and test
         CLASSES_DF[key].drop_duplicates(subset='NÚMERO PACT', keep=False, inplace=True)
@@ -155,8 +156,10 @@ def pre_processing(csv_path, path_to_audios_folders):
         os.makedirs(path_predict_deviation, exist_ok=True)
 
         for row in temp_df.itertuples():
-            patient_path = os.path.join(path_to_audios_folders,  get_patient_folder_name(row[1]))
-            os.system('cp -r {} {}'.format(patient_path, path_predict_deviation))
+            patient_folder_name = get_patient_folder_name(row[1])            
+            patient_path_to_copy = os.path.join(path_to_audios_folders, patient_folder_name)
+            patient_path_to_save = os.path.join(path_predict_deviation, patient_folder_name)            
+            dir_util.copy_tree(patient_path_to_copy, patient_path_to_save)
     print('csv file cleared...')
 
     # --- getting all splited audios from data csv ---
@@ -169,14 +172,14 @@ def pre_processing(csv_path, path_to_audios_folders):
             results = []
             for row in value.itertuples():
                 audio_path = os.path.join(path_to_audios_folders,  get_patient_folder_name(row[1]))
-                results.append(pool.apply_async(split_audio, args=(audio_path, 2000)))
+                results.append(pool.apply_async(split_audio, args=(audio_path, 100)))
 
             splitted_audios = [results[i].get(timeout=None) for i in range(len(results))]
             audios_by_class.update({key: sum(splitted_audios, [])})
     except:
         pool.terminate()
         print('Removing {} folder.'.format(path_to_preprocessed_files))
-        os.system('rm -r {}'.format(path_to_preprocessed_files))
+        dir_util.remove_tree(path_to_preprocessed_files)
         raise Exception('Some unexpected error occurred while processing the audio...')
     print('Audios obtained and cut...')
 
@@ -196,8 +199,8 @@ def pre_processing(csv_path, path_to_audios_folders):
         pool.join()
     except:
         pool.terminate()
-        print('Removing {} folder.'.format(path_to_preprocessed_files))
-        os.system('rm -r {}'.format(path_to_preprocessed_files))
+        print('Removing {} folder.'.format(path_to_preprocessed_files))        
+        dir_util.remove_tree(path_to_preprocessed_files)
         raise Exception('Some unexpected error occurred while generating the spectrograms...')
 
     print('Spectrograms of the audio sections were saved...')

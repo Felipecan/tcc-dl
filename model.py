@@ -21,7 +21,7 @@ class Model:
     def __init__(self, name='VGG19'):
 
         if(name == 'VGG19'):
-            self.model = build_vgg19()
+            self.model = self.build_vgg19()
         elif(name == 'mobilenet'):
             self.model = build_mobilenet()
 
@@ -65,6 +65,7 @@ class Model:
             print('folder: {}'.format(folder))
 
             files = os.listdir(os.path.join(path_to_spect_folders, folder))
+            # files = files[0:100]
             print('Number of files: {}'.format(len(files)))
 
             for i in range(len(files)):
@@ -96,7 +97,6 @@ class Model:
 
         '''
 
-
         # batch_size = 32
         # learning_rate = 5e-4
         # decay = 0.0
@@ -120,7 +120,7 @@ class Model:
         self.model.compile(optimizer=sgd, loss='categorical_crossentropy', metrics=['accuracy'])
 
         history = self.model.fit(x=np.array(self.training_set['pics']).reshape(-1, 224, 224, 3),
-                                 y=np.array(self.training_set['labels']), batch_size=16, epochs=20,
+                                 y=np.array(self.training_set['labels']), batch_size=16, epochs=12,
                                  validation_split=0.111, callbacks=callbacks_list)
 
         evaluate = self.model.evaluate(np.array(self.test_set['pics']).reshape(-1, 224, 224, 3),
@@ -133,22 +133,26 @@ class Model:
         loss = history.history['loss']
         val_loss = history.history['val_loss']
         epochs = range(len(acc))
-
-        plt.plot(epochs, acc, 'bo', label='Training acc')
-        plt.plot(epochs, val_acc, 'b', label='Validation acc')
+        
+        # plt.style.use('ggplot')
+        plt.plot(epochs, acc, label='Training acc')
+        plt.plot(epochs, val_acc, label='Validation acc')
+        plt.grid(axis='both', alpha=.3)
         plt.title('Training and validation accuracy')
         plt.legend()
         plt.savefig('./acc.png')
         plt.figure()
 
-        plt.plot(epochs, loss, 'bo', label='Training loss')
-        plt.plot(epochs, val_loss, 'b', label='Validation loss')
+        plt.plot(epochs, loss, label='Training loss')
+        plt.plot(epochs, val_loss, label='Validation loss')
+        plt.grid(axis='both', alpha=.3)
         plt.title('Training and validation loss')
         plt.legend()
         plt.savefig('./loss.png')
 
         plt.show()
 
+        
     def predict(self, path_to_audio):
         '''
             Description:
@@ -164,21 +168,21 @@ class Model:
 
         '''
 
-
         if(not os.path.isabs(path_to_audio)):
             dirname, _ = os.path.split(os.path.abspath(__file__))
             path_to_audio = os.path.join(dirname, path_to_audio)
-
-        audio_list = split_audio(path_to_audio, 200)
-        print('------> Audios splitted in rate of {} ms by section.'.format(200))
+        
+        time_step = 100
+        audio_list = split_audio(path_to_audio, time_step)
+        # print('\tAudios splitted in {} ms.'.format(time_step))
 
         spectrograms_folder_temp = os.path.join(path_to_audio, '../temp')
-        os.makedirs(spectrograms_folder_temp, exist_ok=True)
+        os.makedirs(spectrograms_folder_temp)
         for i in range(len(audio_list)):
             wav_to_spectrogram(audio_list[i], os.path.join(spectrograms_folder_temp, '{}.png'.format(i)))
-        print('------> Images saved in a temp folder. Images total: {}'.format(len(audio_list)))
+        # print('\tImages saved...')
 
-        print('------> Predicting audio file from saved images...')
+        print('\tPredicting audio file...')
         pred = []
         for archive in os.listdir(spectrograms_folder_temp):
             im = cv2.imread(os.path.join(spectrograms_folder_temp, archive))
@@ -195,15 +199,12 @@ class Model:
             for j in range(len(pred[i])):
                 result_pred[j] += pred[i][j]
 
-        print('------> Non-standardized result', result_pred)
-        result_pred = result_pred/sum(result_pred)
-        print('------> Standardized result', result_pred)
+                
+        print('\tStandardized result', result_pred)
         category = np.argmax(result_pred)
-        print('------> Deviation type: {}'.format(self.folders[category]))
+        print('\tDeviation type: {}'.format(self.folders[category]))
 
-        os.system('rm -r {}'.format(spectrograms_folder_temp))
-        print('------> Deleted folder {}'.format(spectrograms_folder_temp))
-
+        os.system('rm -r {}'.format(spectrograms_folder_temp))        
 
         return self.folders[category]
 
@@ -231,9 +232,10 @@ class Model:
         wrong = 0
         err = 0
         for c in os.listdir(path_to_class):
-            print('predict to {}'.format(c))
+            
+            print('\x1b[6;30;42m' + '\nPredict to deviation {}\n'.format(c) + '\x1b[0m')
             for patient in os.listdir(os.path.join(path_to_class, c)):
-                print('Patient {}'.format(patient))
+                
                 category = self.predict(os.path.join(path_to_class, c, patient))
                 if(category == c):
                     right += 1
@@ -242,24 +244,24 @@ class Model:
                 else:
                     wrong += 1
                 print("right: {}; wrong: {}; error: {}".format(right, wrong, err))
-                print('-----------------------------------------------')
+                print('---------------------------------')
         print('{}/{} right'.format(right, right+wrong+err))
         print('{}/{} wrong'.format(wrong, right+wrong+err))
         print('{}/{} with some erros in the files'.format(err, right+wrong+err))
 
 
-def build_vgg19():
-    '''
-        Description:
+    def build_vgg19(self):
+        '''
+            Description:
 
 
-        Use:
-            build_vgg19()
+            Use:
+                build_vgg19()
 
-        Return:
+            Return:
 
-    '''
-    return Sequential([        
+        '''
+        return Sequential([        
 
             InputLayer(input_shape=[224,224,3]),
             ZeroPadding2D((1,1),input_shape=(3,224,224)),
@@ -313,101 +315,99 @@ def build_vgg19():
         ])
 
 
-def build_mobilenet():
-    '''
-        Description:
+    def build_mobilenet():
+        '''
+            Description:
 
 
-        Use:
-            build_mobilenet()        
+            Use:
+                build_mobilenet()        
 
-        Return:
+            Return:
 
-    '''
-    
-    # dim = (64,64,3)
-    dim = (224,224,3)
-
-    return Sequential([
-        Conv2D(filters=32, kernel_size=(3, 3), strides=(1, 1), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False, input_shape=dim),
-        BatchNormalization(),
-
-        DepthwiseConv2D(kernel_size=(3, 3), strides=(1, 1), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False),
-        BatchNormalization(),
-
-        Conv2D(filters=64, kernel_size=(1, 1), strides=(1, 1), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False),
-        BatchNormalization(),
-
-        DepthwiseConv2D(kernel_size=(3, 3), strides=(2, 2), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False),
-        BatchNormalization(),
+        '''
         
-        Conv2D(filters=128, kernel_size=(1, 1), strides=(1, 1), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False),
-        BatchNormalization(),
+        # dim = (64,64,3)
+        dim = (224,224,3)
 
-        DepthwiseConv2D(kernel_size=(3, 3), strides=(1, 1), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False),
-        BatchNormalization(),
+        return Sequential([
+            Conv2D(filters=32, kernel_size=(3, 3), strides=(1, 1), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False, input_shape=dim),
+            BatchNormalization(),
 
-        Conv2D(filters=128, kernel_size=(1, 1), strides=(1, 1), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False),
-        BatchNormalization(),
+            DepthwiseConv2D(kernel_size=(3, 3), strides=(1, 1), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False),
+            BatchNormalization(),
 
-        DepthwiseConv2D(kernel_size=(3, 3), strides=(1, 1), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False),
-        BatchNormalization(),
+            Conv2D(filters=64, kernel_size=(1, 1), strides=(1, 1), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False),
+            BatchNormalization(),
 
-        Conv2D(filters=256, kernel_size=(1, 1), strides=(1, 1), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False),
-        BatchNormalization(),
+            DepthwiseConv2D(kernel_size=(3, 3), strides=(2, 2), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False),
+            BatchNormalization(),
 
-        DepthwiseConv2D(kernel_size=(3, 3), strides=(1, 1), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False),
-        BatchNormalization(),
+            Conv2D(filters=128, kernel_size=(1, 1), strides=(1, 1), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False),
+            BatchNormalization(),
 
-        Conv2D(filters=256, kernel_size=(1, 1), strides=(1, 1), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False),
-        BatchNormalization(),
+            DepthwiseConv2D(kernel_size=(3, 3), strides=(1, 1), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False),
+            BatchNormalization(),
 
-        DepthwiseConv2D(kernel_size=(3, 3), strides=(2, 2), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False),
-        BatchNormalization(),
+            Conv2D(filters=128, kernel_size=(1, 1), strides=(1, 1), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False),
+            BatchNormalization(),
 
-        Conv2D(filters=256, kernel_size=(1, 1), strides=(1, 1), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False),
-        BatchNormalization(),
+            DepthwiseConv2D(kernel_size=(3, 3), strides=(1, 1), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False),
+            BatchNormalization(),
 
-        DepthwiseConv2D(kernel_size=(3, 3), strides=(1, 1), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False),
-        BatchNormalization(),
-        Conv2D(filters=256, kernel_size=(1, 1), strides=(1, 1), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False),
-        BatchNormalization(),
+            Conv2D(filters=256, kernel_size=(1, 1), strides=(1, 1), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False),
+            BatchNormalization(),
 
-        DepthwiseConv2D(kernel_size=(3, 3), strides=(1, 1), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False),
-        BatchNormalization(),
-        Conv2D(filters=256, kernel_size=(1, 1), strides=(1, 1), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False),
-        BatchNormalization(),
+            DepthwiseConv2D(kernel_size=(3, 3), strides=(1, 1), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False),
+            BatchNormalization(),
 
-        DepthwiseConv2D(kernel_size=(3, 3), strides=(1, 1), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False),
-        BatchNormalization(),
-        Conv2D(filters=256, kernel_size=(1, 1), strides=(1, 1), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False),
-        BatchNormalization(),
+            Conv2D(filters=256, kernel_size=(1, 1), strides=(1, 1), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False),
+            BatchNormalization(),
 
-        DepthwiseConv2D(kernel_size=(3, 3), strides=(1, 1), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False),
-        BatchNormalization(),
-        Conv2D(filters=256, kernel_size=(1, 1), strides=(1, 1), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False),
-        BatchNormalization(),
+            DepthwiseConv2D(kernel_size=(3, 3), strides=(2, 2), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False),
+            BatchNormalization(),
 
-        DepthwiseConv2D(kernel_size=(3, 3), strides=(1, 1), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False),
-        BatchNormalization(),
-        Conv2D(filters=256, kernel_size=(1, 1), strides=(1, 1), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False),
-        BatchNormalization(),
+            Conv2D(filters=256, kernel_size=(1, 1), strides=(1, 1), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False),
+            BatchNormalization(),
 
-        DepthwiseConv2D(kernel_size=(3, 3), strides=(2, 2), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False),
-        BatchNormalization(),
+            DepthwiseConv2D(kernel_size=(3, 3), strides=(1, 1), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False),
+            BatchNormalization(),
+            Conv2D(filters=256, kernel_size=(1, 1), strides=(1, 1), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False),
+            BatchNormalization(),
 
-        Conv2D(filters=512, kernel_size=(1, 1), strides=(1, 1), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False),
-        BatchNormalization(),
+            DepthwiseConv2D(kernel_size=(3, 3), strides=(1, 1), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False),
+            BatchNormalization(),
+            Conv2D(filters=256, kernel_size=(1, 1), strides=(1, 1), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False),
+            BatchNormalization(),
 
-        DepthwiseConv2D(kernel_size=(3, 3), strides=(1, 1), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False),
-        BatchNormalization(),
+            DepthwiseConv2D(kernel_size=(3, 3), strides=(1, 1), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False),
+            BatchNormalization(),
+            Conv2D(filters=256, kernel_size=(1, 1), strides=(1, 1), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False),
+            BatchNormalization(),
 
-        Conv2D(filters=512, kernel_size=(1, 1), strides=(1, 1), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False),
-        BatchNormalization(),
+            DepthwiseConv2D(kernel_size=(3, 3), strides=(1, 1), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False),
+            BatchNormalization(),
+            Conv2D(filters=256, kernel_size=(1, 1), strides=(1, 1), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False),
+            BatchNormalization(),
 
-        GlobalAveragePooling2D(),
-        Dense(2, kernel_initializer='he_normal', activation='softmax')
-    ])        
+            DepthwiseConv2D(kernel_size=(3, 3), strides=(1, 1), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False),
+            BatchNormalization(),
+            Conv2D(filters=256, kernel_size=(1, 1), strides=(1, 1), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False),
+            BatchNormalization(),
 
+            DepthwiseConv2D(kernel_size=(3, 3), strides=(2, 2), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False),
+            BatchNormalization(),
 
-        
+            Conv2D(filters=512, kernel_size=(1, 1), strides=(1, 1), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False),
+            BatchNormalization(),
+
+            DepthwiseConv2D(kernel_size=(3, 3), strides=(1, 1), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False),
+            BatchNormalization(),
+
+            Conv2D(filters=512, kernel_size=(1, 1), strides=(1, 1), padding='same', kernel_initializer='he_normal', activation='relu', use_bias=False),
+            BatchNormalization(),
+
+            GlobalAveragePooling2D(),
+            Dense(2, kernel_initializer='he_normal', activation='softmax')
+        ])        
+
