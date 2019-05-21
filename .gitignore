@@ -3,6 +3,4 @@ __pycache__
 *.csv
 
 .vscode/
-dados/
-
-codes/
+dados

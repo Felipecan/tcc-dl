@@ -35,9 +35,9 @@ To run the script:
 $ python pre_processing.py --csv path/to/file.csv --audios path/to/audios_folders
 ```
 
-[model.py](model.py): This file is a class that contains the implementation of the convolutional network VGG19 presented by *Simonyan and Zisserman* in 2014, as well as MobileNet. Which network will be used should be informed in the Model class constructor.
+[VGG19.py](VGG19.py): This file is a class that contains the implementation of the convolutional network VGG19 presented by *Simonyan and Zisserman* in 2014.
 
-[main.py](main.py): This script has the function to perform all tasks so far presented. It works in two ways: by calling the functions of [model](model.py) or combined with [preprocessing](pre_processing.py) to preprocess data and train the network all at once.
+[main.py](main.py): This script has the function to perform all tasks so far presented. It works in two ways: by calling the functions of [VGG19](VGG19.py) or combined with [preprocessing](pre_processing.py) to preprocess data and train the network all at once.
 
 To run the [main.py](main.py) script only as training (data must be pre-processed):
 ```sh

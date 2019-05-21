@@ -1,4 +1,4 @@
-name: tcc-env-cpu
+name: tcc-env
 channels:
   - defaults
   - conda-forge
@@ -10,5 +10,6 @@ dependencies:
   - tensorflow=1.12.0
   - scipy
   - pydub
+  - pip
   - pip:
     - matplotlib
