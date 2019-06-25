@@ -118,7 +118,7 @@ def pre_processing(csv_path, path_to_audios_folders):
 
     try:
         csv_file = pd.read_csv(csv_path, sep=',', encoding='utf-8', low_memory=False, dtype='str')
-    except IOError as e:
+    except IOError:
         raise IOError('Could not read the file [{}] correctly. Closing program...'.format(csv_path))
 
 
@@ -146,7 +146,7 @@ def pre_processing(csv_path, path_to_audios_folders):
     # audio and observe your result.
     for key, value in CLASSES_DF.items():
 
-        temp = random.sample(range(0, len(CLASSES_DF[key].index)), int(len_smallest_df*0.3)) # 30% of patients are for predict test
+        temp = random.sample(range(0, len(CLASSES_DF[key].index)), int(len_smallest_df*0.4)) # 30% of patients are for predict test
         temp_df = CLASSES_DF[key].iloc[temp]
         CLASSES_DF[key] = pd.concat([CLASSES_DF[key], temp_df]) # remove patient to dataframe for training, validation and test
         CLASSES_DF[key].drop_duplicates(subset='NÚMERO PACT', keep=False, inplace=True)
@@ -187,6 +187,10 @@ def pre_processing(csv_path, path_to_audios_folders):
     spectrogram_path = os.path.join(path_to_preprocessed_files, 'spectrograms')
 
     try:
+	    # talvez fazer um shuffle nos audios para embaralha-los, fazendo com que não pegue somente audios na sequencia que foram cortados
+        for key, value in audios_by_class.items():
+            random.shuffle(audios_by_class[key])
+            
         len_smallest_audio = min([len(value) for value in audios_by_class.values()])
         for key, value in audios_by_class.items():
 
