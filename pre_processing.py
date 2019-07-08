@@ -152,13 +152,13 @@ def pre_processing(csv_path, path_to_audios_folders):
         CLASSES_DF[key].drop_duplicates(subset='NÚMERO PACT', keep=False, inplace=True)
 
         # -----> coping folders to other directory... it's gonna be used in predict after.
-        path_predict_deviation = os.path.join(path_to_preprocessed_files, 'predict', '{}'.format(key.replace(' ', '-')))
-        os.makedirs(path_predict_deviation, exist_ok=True)
+        path_predict = os.path.join(path_to_preprocessed_files, 'predict', '{}'.format(key.replace(' ', '-')))
+        os.makedirs(path_predict, exist_ok=True)
 
         for row in temp_df.itertuples():
             patient_folder_name = get_patient_folder_name(row[1])            
             patient_path_to_copy = os.path.join(path_to_audios_folders, patient_folder_name)
-            patient_path_to_save = os.path.join(path_predict_deviation, patient_folder_name)            
+            patient_path_to_save = os.path.join(path_predict, patient_folder_name)            
             dir_util.copy_tree(patient_path_to_copy, patient_path_to_save)
     print('csv file cleared...')
 
@@ -172,7 +172,7 @@ def pre_processing(csv_path, path_to_audios_folders):
             results = []
             for row in value.itertuples():
                 audio_path = os.path.join(path_to_audios_folders,  get_patient_folder_name(row[1]))
-                results.append(pool.apply_async(split_audio, args=(audio_path, 100)))
+                results.append(pool.apply_async(split_audio, args=(audio_path, 50)))
 
             splitted_audios = [results[i].get(timeout=None) for i in range(len(results))]
             audios_by_class.update({key: sum(splitted_audios, [])})
@@ -209,6 +209,9 @@ def pre_processing(csv_path, path_to_audios_folders):
 
     print('Spectrograms of the audio sections were saved...')
     print('Spectrograms saved on: {}'.format(spectrogram_path))
+    print('Time step: {}'.format(50))
+    print('Number of saved images: {}'.format(len_smallest_audio))
+    print('Number of patients saved for prediction: {}'.format(int(len_smallest_df*0.4)))
     return spectrogram_path
 
 
