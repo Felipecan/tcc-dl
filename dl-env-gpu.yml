@@ -10,5 +10,7 @@ dependencies:
   - tensorflow-gpu=1.12.0
   - scipy
   - pydub
+  - pylint
+  - pip
   - pip:
     - matplotlib

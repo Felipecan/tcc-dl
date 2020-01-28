@@ -7,21 +7,15 @@ import multiprocessing
 import distutils.dir_util as dir_util
 from util import split_audio, wav_to_spectrogram
 
+TIME_STEP_SPLIT = 200
 
-''' 
-dictionary that contains the classes to be trained.
-example: if the classes are in relation to deviation, use: key: 1, 2, ..., 4...
-always check at csv or database the key you will use.
-'''
+#dictionary that contains the classes to be trained.
 CLASSES_DF = {
     '1': None,
     '2': None
 }
 
-'''
-table at csv that will be analyzed on pre processing.
-always check at csv or database the column you will use.
-'''
+#table at csv that will be analyzed on pre processing.
 TABLE_COLUMN = 'Pres, Desvio EAV-G (VGe)'
 
 
@@ -99,13 +93,10 @@ def pre_processing(csv_path, path_to_audios_folders):
                 NOTE: The audios should be separated by folder, in this case.
     '''
 
-    # getting csv path correct
     if(not os.path.isabs(csv_path)):
         dirname, _ = os.path.split(os.path.abspath(__file__))
         csv_path = os.path.join(dirname, csv_path)
 
-    # getting the better path to patients folders.
-    # this path is gonna be used to pre processing the patients for predicting and to splitting audios to training
     if(not os.path.isabs(path_to_audios_folders)):
         dirname, _ = os.path.split(os.path.abspath(__file__))
         path_to_audios_folders = os.path.normpath(os.path.join(dirname, path_to_audios_folders))
@@ -122,28 +113,24 @@ def pre_processing(csv_path, path_to_audios_folders):
         raise IOError('Could not read the file [{}] correctly. Closing program...'.format(csv_path))
 
 
-    # patients with valid audio are patient that has audio file qv001.wav or qv012.wav in their folders.
     all_patients_valid = get_all_patients_with_valid_audio(path_to_audios_folders)
-    csv_file = csv_file.loc[csv_file['NÚMERO PACT'].isin(all_patients_valid)] # seletct only pacients with valid audio
+    csv_file = csv_file.loc[csv_file['NÚMERO PACT'].isin(all_patients_valid)] 
 
-    # drop all elements with null and all columns that no matters.
+
     csv_file.dropna(subset=[TABLE_COLUMN], inplace=True)
     csv_file.drop(csv_file.columns.difference(['NÚMERO PACT', TABLE_COLUMN]), axis=1, inplace=True)
 
-    # for this pre processing, we're using only deviation presence, deviation 1 and deviation 2.
-    # then, we fill the dictionary with keys to classes with these values
+
     for key, value in CLASSES_DF.items():
         CLASSES_DF[key] = csv_file[csv_file[TABLE_COLUMN].str.contains(key, case=False)]
 
-    # getting the smallest dataframe to balanced the classes and select the patients randomly
+
     len_smallest_df = min([len(value.index) for value in CLASSES_DF.values()])
     for key, value in CLASSES_DF.items():
         temp_select_list = random.sample(range(0, len(CLASSES_DF[key].index)), len_smallest_df)
         CLASSES_DF[key] = CLASSES_DF[key].iloc[temp_select_list]
 
 
-    # separating a set of patient to use on test of predict, that is, use this patient with the complete 
-    # audio and observe your result.
     for key, value in CLASSES_DF.items():
 
         temp = random.sample(range(0, len(CLASSES_DF[key].index)), int(len_smallest_df*0.4)) # 30% of patients are for predict test
@@ -162,7 +149,8 @@ def pre_processing(csv_path, path_to_audios_folders):
             dir_util.copy_tree(patient_path_to_copy, patient_path_to_save)
     print('csv file cleared...')
 
-    # --- getting all splited audios from data csv ---
+
+
     pool = multiprocessing.Pool(40)
 
     try:
@@ -172,7 +160,7 @@ def pre_processing(csv_path, path_to_audios_folders):
             results = []
             for row in value.itertuples():
                 audio_path = os.path.join(path_to_audios_folders,  get_patient_folder_name(row[1]))
-                results.append(pool.apply_async(split_audio, args=(audio_path, 50)))
+                results.append(pool.apply_async(split_audio, args=(audio_path, TIME_STEP_SPLIT)))
 
             splitted_audios = [results[i].get(timeout=None) for i in range(len(results))]
             audios_by_class.update({key: sum(splitted_audios, [])})
@@ -183,7 +171,8 @@ def pre_processing(csv_path, path_to_audios_folders):
         raise Exception('Some unexpected error occurred while processing the audio...')
     print('Audios obtained and cut...')
 
-    # --- saving all spectrograms from audios above ---
+
+
     spectrogram_path = os.path.join(path_to_preprocessed_files, 'spectrograms')
 
     try:
@@ -209,7 +198,7 @@ def pre_processing(csv_path, path_to_audios_folders):
 
     print('Spectrograms of the audio sections were saved...')
     print('Spectrograms saved on: {}'.format(spectrogram_path))
-    print('Time step: {}'.format(50))
+    print('Time step: {}'.format(TIME_STEP_SPLIT))
     print('Number of saved images: {}'.format(len_smallest_audio))
     print('Number of patients saved for prediction: {}'.format(int(len_smallest_df*0.4)))
     return spectrogram_path

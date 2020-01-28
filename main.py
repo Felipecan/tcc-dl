@@ -1,6 +1,7 @@
 import sys
 import argparse
 import pre_processing
+# from Model import Model
 from VGG19 import VGG19
 
 parser = argparse.ArgumentParser(description='Script to perform general tasks like: pre-processing and then train, train the network directly.')
@@ -15,6 +16,7 @@ if(arguments.mode == 'training'):
     vgg19 = VGG19()
     vgg19.config_dataset(arguments.spectrograms)    
     vgg19.train()
+    vgg19.test_predict()
 else:
     print('Entering on all mode...')    
     print('First, starting the pre processing of the datas...')    
@@ -24,3 +26,4 @@ else:
     vgg19 = VGG19()
     vgg19.config_dataset(spectrograms)    
     vgg19.train()
+    vgg19.test_predict()
