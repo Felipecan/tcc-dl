@@ -1,8 +1,68 @@
 import os
+import glob 
 import numpy as np
 from scipy import signal
 from pydub import AudioSegment
 import matplotlib.pyplot as plt
+
+def get_all_patients_with_valid_audio(path_to_audios_folders):   
+    '''
+        Description:
+            Get all the patients with valid audios, ie, those patients that have in their folders 
+            the files of audios qv001.wav or qv012.wav.
+
+        Use:
+            get_all_patients_with_valid_audio('path/to/the/audios/folders')
+
+        Parameters:
+            path_to_audios_folders:
+                Path to the folder containing the audio. 
+                NOTE: The audios should be separated by folder, in this case.
+
+        Return:
+            A list containing the number of patients selected.
+    '''
+
+    patient_qv001 = glob.glob(os.path.join(path_to_audios_folders, 'pac*/qv001.wav'))
+    patient_qv012 = glob.glob(os.path.join(path_to_audios_folders, 'pac*/qv012.wav'))
+
+    patient_qv001 = [i.replace(os.path.normpath(os.path.join('/', 'qv001.wav')), '') for i in patient_qv001]
+    patient_qv012 = [i.replace(os.path.normpath(os.path.join('/', 'qv012.wav')), '') for i in patient_qv012]
+    
+    all_patients_valid = patient_qv001.copy()
+    all_patients_valid.extend([patient for patient in patient_qv012 if not(patient in patient_qv001)])
+
+    all_patients_valid = [int(''.join(filter(str.isdigit, p))) for p in all_patients_valid]
+    all_patients_valid = [str(p) for p in all_patients_valid]
+
+    return all_patients_valid
+
+
+def get_patient_folder_name(patient_number):
+    '''
+        Description:
+            Given the patient's number, he gets the name of the folder containing his files.
+
+        Use:
+            get_patient_folder_name('1')
+
+        Parameters:
+            patient_number:
+                Patient number recorded in csv or database.           
+        
+        Return:
+            A string containing the name of the patient folder. 
+            Example: input: '1' => output: 'pac001'.
+    '''
+
+    if (int(patient_number) < 10):
+        folder_name = 'pac00{}'.format(patient_number)
+    elif (int(patient_number) < 100):
+        folder_name = 'pac0{}'.format(patient_number)
+    else:
+        folder_name = 'pac{}'.format(patient_number)
+        
+    return folder_name
 
 def split_audio(path_to_audio, time_step):
     '''
@@ -26,6 +86,7 @@ def split_audio(path_to_audio, time_step):
     '''
 
     if(not os.path.isfile(path_to_audio)):
+        
         files = os.listdir(path_to_audio)
         if('qv001.wav' in files):
             path_to_audio = os.path.join(path_to_audio, 'qv001.wav')

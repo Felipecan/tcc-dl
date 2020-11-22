@@ -1,214 +1,148 @@
 import os
-import glob   
+import util
 import random
-import argparse
+import threading
 import pandas as pd
 import multiprocessing
 import distutils.dir_util as dir_util
-from util import split_audio, wav_to_spectrogram
 
-TIME_STEP_SPLIT = 200
+AUDIO_DIR = './tcc_files/patients_audios'
+POST_PROCESSING_DIR = './tcc_files/post_processing_files'
+CSV = './tcc_files/patients_db.csv'
 
-#dictionary that contains the classes to be trained.
-CLASSES_DF = {
+GROUPS = {
     '1': None,
     '2': None
 }
 
-#table at csv that will be analyzed on pre processing.
 TABLE_COLUMN = 'Pres, Desvio EAV-G (VGe)'
 
+PREDICT_PER = 0.3
+TIME_STEP_SPLIT = 200
 
-def get_all_patients_with_valid_audio(path_to_audios_folders):   
-    '''
-        Description:
-            Get all the patients with valid audios, ie, those patients that have in their folders 
-            the files of audios qv001.wav or qv012.wav.
+pool = multiprocessing.Pool(40)
 
-        Use:
-            get_all_patients_with_valid_audio('path/to/the/audios/folders')
+def save_files_to_predict(predict_group):
 
-        Parameters:
-            path_to_audios_folders:
-                Path to the folder containing the audio. 
-                NOTE: The audios should be separated by folder, in this case.
+    print('save_files_to_predict routine started...')
 
-        Return:
-            A list containing the number of patients selected.
-    '''
-
-    patient_qv001 = glob.glob(os.path.join(path_to_audios_folders, 'pac*/qv001.wav'))
-    patient_qv012 = glob.glob(os.path.join(path_to_audios_folders, 'pac*/qv012.wav'))
-
-    patient_qv001 = [i.replace('/qv001.wav', '') for i in patient_qv001]
-    patient_qv012 = [i.replace('/qv012.wav', '') for i in patient_qv012]
+    for key, value in predict_group.items():
     
-    all_patients_valid = patient_qv001.copy()
-    all_patients_valid.extend([patient for patient in patient_qv012 if not(patient in patient_qv001)])
+        predict_dir = os.path.join(POST_PROCESSING_DIR, 'predict', '{}'.format(key.replace(' ', '-')))
+        os.makedirs(predict_dir, exist_ok=True)
 
-    all_patients_valid = [int(''.join(filter(str.isdigit, p))) for p in all_patients_valid]
-    all_patients_valid = [str(p) for p in all_patients_valid]
+        for row in value.itertuples():
 
-    return all_patients_valid
+            patient_folder_name = util.get_patient_folder_name(row[1])            
+            copy_from = os.path.join(AUDIO_DIR, patient_folder_name)
+            paste_to = os.path.join(predict_dir, patient_folder_name)            
+            dir_util.copy_tree(copy_from, paste_to)    
 
-def get_patient_folder_name(patient_number):
-    '''
-        Description:
-            Given the patient's number, he gets the name of the folder containing his files.
+def get_audios_and_process():
 
-        Use:
-            get_patient_folder_name('1')
-
-        Parameters:
-            patient_number:
-                Patient number recorded in csv or database.           
-        
-        Return:
-            A string containing the name of the patient folder. 
-            Example: input: '1' => output: 'pac001'.
-    '''
-
-    if(int(patient_number)< 10):
-        folder_name = 'pac00{}'.format(patient_number)
-    elif(int(patient_number) < 100):
-        folder_name = 'pac0{}'.format(patient_number)
-    else:
-        folder_name = 'pac{}'.format(patient_number)
-    return folder_name
-
-
-def pre_processing(csv_path, path_to_audios_folders):
-    '''
-        Description:
-            It preprocesses the data contained in the csv for the audios and then the spectrogram.
-
-        Use:
-            pre_processing('/path/to/file.csv', 'path/to/the/audios/folders')
-
-        Parameters:
-            csv_path:
-                Path to the desired csv file.
-            path_to_audios_folders:
-                Path to the folder containing the audio. 
-                NOTE: The audios should be separated by folder, in this case.
-    '''
-
-    if(not os.path.isabs(csv_path)):
-        dirname, _ = os.path.split(os.path.abspath(__file__))
-        csv_path = os.path.join(dirname, csv_path)
-
-    if(not os.path.isabs(path_to_audios_folders)):
-        dirname, _ = os.path.split(os.path.abspath(__file__))
-        path_to_audios_folders = os.path.normpath(os.path.join(dirname, path_to_audios_folders))
-
-    if(not os.path.isdir(path_to_audios_folders)):
-        raise Exception('Path [{}] does not exist... Leaving program.'.format(path_to_audios_folders))
-
-    path_to_preprocessed_files = os.path.normpath(os.path.join(path_to_audios_folders, '../pre_processing'))
-
+    print('Getting audios and splitting them...')
 
     try:
-        csv_file = pd.read_csv(csv_path, sep=',', encoding='utf-8', low_memory=False, dtype='str')
-    except IOError:
-        raise IOError('Could not read the file [{}] correctly. Closing program...'.format(csv_path))
 
-
-    all_patients_valid = get_all_patients_with_valid_audio(path_to_audios_folders)
-    csv_file = csv_file.loc[csv_file['NÚMERO PACT'].isin(all_patients_valid)] 
-
-
-    csv_file.dropna(subset=[TABLE_COLUMN], inplace=True)
-    csv_file.drop(csv_file.columns.difference(['NÚMERO PACT', TABLE_COLUMN]), axis=1, inplace=True)
-
-
-    for key, value in CLASSES_DF.items():
-        CLASSES_DF[key] = csv_file[csv_file[TABLE_COLUMN].str.contains(key, case=False)]
-
-
-    len_smallest_df = min([len(value.index) for value in CLASSES_DF.values()])
-    for key, value in CLASSES_DF.items():
-        temp_select_list = random.sample(range(0, len(CLASSES_DF[key].index)), len_smallest_df)
-        CLASSES_DF[key] = CLASSES_DF[key].iloc[temp_select_list]
-
-
-    for key, value in CLASSES_DF.items():
-
-        temp = random.sample(range(0, len(CLASSES_DF[key].index)), int(len_smallest_df*0.4)) # 30% of patients are for predict test
-        temp_df = CLASSES_DF[key].iloc[temp]
-        CLASSES_DF[key] = pd.concat([CLASSES_DF[key], temp_df]) # remove patient to dataframe for training, validation and test
-        CLASSES_DF[key].drop_duplicates(subset='NÚMERO PACT', keep=False, inplace=True)
-
-        # -----> coping folders to other directory... it's gonna be used in predict after.
-        path_predict = os.path.join(path_to_preprocessed_files, 'predict', '{}'.format(key.replace(' ', '-')))
-        os.makedirs(path_predict, exist_ok=True)
-
-        for row in temp_df.itertuples():
-            patient_folder_name = get_patient_folder_name(row[1])            
-            patient_path_to_copy = os.path.join(path_to_audios_folders, patient_folder_name)
-            patient_path_to_save = os.path.join(path_predict, patient_folder_name)            
-            dir_util.copy_tree(patient_path_to_copy, patient_path_to_save)
-    print('csv file cleared...')
-
-
-
-    pool = multiprocessing.Pool(40)
-
-    try:
-        audios_by_class = {}
-        for key, value in CLASSES_DF.items():
+        audios_by_group = {}
+        for key, value in GROUPS.items():
 
             results = []
             for row in value.itertuples():
-                audio_path = os.path.join(path_to_audios_folders,  get_patient_folder_name(row[1]))
-                results.append(pool.apply_async(split_audio, args=(audio_path, TIME_STEP_SPLIT)))
+                audio_path = os.path.join(AUDIO_DIR,  util.get_patient_folder_name(row[1]))
+                results.append(pool.apply_async(util.split_audio, args=(audio_path, TIME_STEP_SPLIT)))
 
             splitted_audios = [results[i].get(timeout=None) for i in range(len(results))]
-            audios_by_class.update({key: sum(splitted_audios, [])})
+            audios_by_group.update({key: sum(splitted_audios, [])})
     except:
+
         pool.terminate()
-        print('Removing {} folder.'.format(path_to_preprocessed_files))
-        dir_util.remove_tree(path_to_preprocessed_files)
+        print('Removing {} folder.'.format(POST_PROCESSING_DIR))
+        dir_util.remove_tree(POST_PROCESSING_DIR)
         raise Exception('Some unexpected error occurred while processing the audio...')
-    print('Audios obtained and cut...')
 
+    return audios_by_group
 
-
-    spectrogram_path = os.path.join(path_to_preprocessed_files, 'spectrograms')
+def load_and_process_csv_file():
 
     try:
+        print('Trying read CSV file from: {}'.format(CSV))
+        csv_file = pd.read_csv(CSV, sep=',', encoding='utf-8', low_memory=False, dtype='str')
+    except IOError:
+        raise IOError('Could not read the file [{}] correctly. Closing program...'.format(CSV))
+
+    print('Starting CSV structure creation and clearing data...\n')
+    
+    csv_file = csv_file.loc[csv_file['NÚMERO PACT'].isin(util.get_all_patients_with_valid_audio(AUDIO_DIR))]     
+    csv_file.dropna(subset=[TABLE_COLUMN], inplace=True)
+    csv_file.drop(csv_file.columns.difference(['NÚMERO PACT', TABLE_COLUMN]), axis=1, inplace=True)
+
+    for key, _ in GROUPS.items():
+        GROUPS[key] = csv_file[csv_file[TABLE_COLUMN].str.contains(key, case=False)]
+
+    # normalizing, randomly by patients, the groups size...
+    smallest_group_size = min([len(value.index) for value in GROUPS.values()])
+    for key, value in GROUPS.items():
+        temp_select_list = random.sample(range(0, len(value.index)), smallest_group_size)
+        GROUPS[key] = value.iloc[temp_select_list]
+
+    print('separating train/evaluate dataset from predict dataset...')
+    predict_group = GROUPS.copy()
+
+    for key, value in GROUPS.items():
+
+        temp = random.sample(range(0, len(value.index)), int(smallest_group_size * PREDICT_PER)) # 30% of patients are for predict test
+        predict_group[key] = value.iloc[temp]
+
+        # remove predict patients from dataframe for training, validation and test
+        common = value.merge(predict_group[key], on=['NÚMERO PACT'])        
+        GROUPS[key] = GROUPS[key][~GROUPS[key]['NÚMERO PACT'].isin(common['NÚMERO PACT'])]
+
+    print('Starting routine to copy predict files...')
+    save_predict_thread = threading.Thread(target=save_files_to_predict, args=(predict_group,))
+    save_predict_thread.start()
+
+
+def generate_spectrograms():
+
+    print('Starting spctogram generate...')
+
+    audios_group = get_audios_and_process()
+
+    spectrogram_path = os.path.join(POST_PROCESSING_DIR, 'spectrograms')
+    
+    try:
 	    # talvez fazer um shuffle nos audios para embaralha-los, fazendo com que não pegue somente audios na sequencia que foram cortados
-        for key, value in audios_by_class.items():
-            random.shuffle(audios_by_class[key])
+        for key, value in audios_group.items():
+            random.shuffle(audios_group[key])
             
-        len_smallest_audio = min([len(value) for value in audios_by_class.values()])
-        for key, value in audios_by_class.items():
+        smallest_audio_group_size = min([len(value) for value in audios_group.values()])
+
+        for key, value in audios_group.items():
 
             class_path = os.path.join(spectrogram_path, '{}'.format(key.replace(' ', '-')))
             os.makedirs(class_path, exist_ok=True)
-            for i in range(len_smallest_audio):
-                pool.apply_async(wav_to_spectrogram, args=(value[i], os.path.join(class_path, '{}.png'.format(i))))
+
+            for i in range(smallest_audio_group_size):
+                pool.apply_async(util.wav_to_spectrogram, args=(value[i], os.path.join(class_path, '{}.png'.format(i))))
 
         pool.close()
         pool.join()
     except:
         pool.terminate()
-        print('Removing {} folder.'.format(path_to_preprocessed_files))        
-        dir_util.remove_tree(path_to_preprocessed_files)
+        print('Removing {} folder.'.format(POST_PROCESSING_DIR))        
+        dir_util.remove_tree(POST_PROCESSING_DIR)
         raise Exception('Some unexpected error occurred while generating the spectrograms...')
-
-    print('Spectrograms of the audio sections were saved...')
-    print('Spectrograms saved on: {}'.format(spectrogram_path))
-    print('Time step: {}'.format(TIME_STEP_SPLIT))
-    print('Number of saved images: {}'.format(len_smallest_audio))
-    print('Number of patients saved for prediction: {}'.format(int(len_smallest_df*0.4)))
-    return spectrogram_path
-
-
-if(__name__ == '__main__'):
-
-    parser = argparse.ArgumentParser(description='Script to preprocess the audios. It reads the csv, separates the audios and converts them to spectrograms.')
-    parser.add_argument('--csv', action='store', dest='csv', required=True, help='Name/path of .csv with data to categorize.')
-    parser.add_argument('--audios', action='store', dest='audios', required=True, help='Name/path of the folder containing the folder with audio.')
-    arguments = parser.parse_args()
     
-    pre_processing(arguments.csv, arguments.audios)
+
+def start():
+
+    print('\nStarting pre processing...\n')
+
+    load_and_process_csv_file()
+    generate_spectrograms()
+
+    print('\nPre processing finished.\n')
+
+
+
